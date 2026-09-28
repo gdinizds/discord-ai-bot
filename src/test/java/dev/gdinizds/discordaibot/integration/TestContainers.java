@@ -32,8 +32,6 @@ final class TestContainers {
             "discord.gateway.responses",
             "discord.gateway.commands");
 
-    // Unnamed build: Testcontainers tags it localhost/testcontainers/<id>, which it treats as a
-    // local image. A short explicit name is resolved against Docker Hub and fails with NotFound.
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(DockerImageName.parse(
             new ImageFromDockerfile()
                     .withDockerfile(Paths.get("docker/postgres/Dockerfile"))
