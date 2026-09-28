@@ -4,7 +4,7 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.redpanda.RedpandaContainer;
@@ -33,10 +33,10 @@ final class TestContainers {
             "discord.gateway.commands");
 
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(DockerImageName.parse(
-            new ImageFromDockerfile("discord-ai-bot-postgres-test", false)
+            new ImageFromDockerfile()
                     .withDockerfile(Paths.get("docker/postgres/Dockerfile"))
                     .get())
-            .asCompatibleSubstituteFor("postgres"))
+            .asCompatibleSubstituteFor(PostgreSQLContainer.IMAGE))
             .withCommand("postgres",
                     "-c", "shared_preload_libraries=pg_cron",
                     "-c", "cron.database_name=" + DATABASE)
@@ -44,7 +44,13 @@ final class TestContainers {
 
     static final RedpandaContainer REDPANDA = new RedpandaContainer("docker.redpanda.com/redpandadata/redpanda:v24.2.18");
 
-    static final MinIOContainer MINIO = new MinIOContainer("minio/minio:RELEASE.2025-04-22T22-12-26Z");
+    static final String S3_ACCESS_KEY = "test";
+    static final String S3_SECRET_KEY = "test";
+
+    static final GenericContainer<?> LOCALSTACK = new GenericContainer<>("localstack/localstack:3.5")
+            .withExposedPorts(4566)
+            .withEnv("SERVICES", "s3")
+            .withEnv("DEFAULT_REGION", "us-east-1");
 
     static final WireMockServer WIREMOCK = new WireMockServer(options().dynamicPort());
 
@@ -56,7 +62,7 @@ final class TestContainers {
         if (started) return;
         POSTGRES.start();
         REDPANDA.start();
-        MINIO.start();
+        LOCALSTACK.start();
         WIREMOCK.start();
         createTopics();
         try (S3Client s3 = s3()) {
@@ -67,12 +73,16 @@ final class TestContainers {
 
     static S3Client s3() {
         return S3Client.builder()
-                .endpointOverride(URI.create(MINIO.getS3URL()))
+                .endpointOverride(URI.create(s3Url()))
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(MINIO.getUserName(), MINIO.getPassword())))
+                        AwsBasicCredentials.create(S3_ACCESS_KEY, S3_SECRET_KEY)))
                 .region(Region.US_EAST_1)
                 .forcePathStyle(true)
                 .build();
+    }
+
+    static String s3Url() {
+        return "http://" + LOCALSTACK.getHost() + ":" + LOCALSTACK.getMappedPort(4566);
     }
 
     private static void createTopics() {

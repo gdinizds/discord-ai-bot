@@ -48,6 +48,7 @@ class ConversationFlowIT extends IntegrationTest {
 
     @BeforeAll
     static void subscribeToResponses() {
+        TestContainers.start();
         responseConsumer = new KafkaConsumer<>(Map.of(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, TestContainers.REDPANDA.getBootstrapServers(),
                 ConsumerConfig.GROUP_ID_CONFIG, "it-responses-" + UUID.randomUUID(),
@@ -147,7 +148,7 @@ class ConversationFlowIT extends IntegrationTest {
             s3.putObject(b -> b.bucket(TestContainers.BUCKET).key(key),
                     RequestBody.fromBytes(new byte[]{(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}));
         }
-        String url = TestContainers.MINIO.getS3URL() + "/" + TestContainers.BUCKET + "/" + key;
+        String url = TestContainers.s3Url() + "/" + TestContainers.BUCKET + "/" + key;
         String payload = event("dot-ia").replaceFirst("\"attachments\":\\[[^\\]]*\\]", "\"attachments\":[\"" + url + "\"]");
         model.thenAnswer("É um print.");
         String cid = UUID.randomUUID().toString();
