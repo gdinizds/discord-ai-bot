@@ -14,11 +14,15 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -80,5 +84,77 @@ class GarageImageStoreTest {
 
         assertThat(description).hasSize(GarageImageStore.MAX_DESCRIPTION).endsWith("…");
         assertThat(GarageImageStore.description(new ImageHit("   ", "", "", "", ""))).isNull();
+    }
+
+    @Test
+    void candidatesAreDownloadedConcurrently() {
+        var started = new CountDownLatch(3);
+        var downloader = new SafeImageDownloader(Duration.ofSeconds(1), 1024, "test", a -> true, false) {
+            @Override
+            public DownloadedImage download(String url) {
+                started.countDown();
+                try {
+                    if (!started.await(5, TimeUnit.SECONDS)) throw new ImageRejectedException("sequential");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new ImageRejectedException("interrompido");
+                }
+                return new DownloadedImage(PNG, ImageFormat.PNG);
+            }
+        };
+        var store = new GarageImageStore(downloader, s3, resilience, "http://garage:3900", "b", "ai-bot");
+
+        var stored = store.storeFirst("1", "c", 1, List.of(hit("a"), hit("b"), hit("c")), 3);
+
+        assertThat(stored).extracting(s -> s.image().fileName())
+                .containsExactly("imagem-1.png", "imagem-2.png", "imagem-3.png");
+    }
+
+    @Test
+    void failedCandidatesAreSkippedAndIndexesStaySequential() {
+        var downloader = new SafeImageDownloader(Duration.ofSeconds(1), 1024, "test", a -> true, false) {
+            @Override
+            public DownloadedImage download(String url) {
+                if (url.contains("quebrada")) throw new ImageRejectedException("HTTP 404");
+                return new DownloadedImage(PNG, ImageFormat.PNG);
+            }
+        };
+        var store = new GarageImageStore(downloader, s3, resilience, "http://garage:3900", "b", "ai-bot");
+
+        var stored = store.storeFirst("1", "c", 5, List.of(hit("quebrada"), hit("boa-1"), hit("boa-2"), hit("boa-3")), 2);
+
+        assertThat(stored).extracting(s -> s.hit().title()).containsExactly("boa-1", "boa-2");
+        assertThat(stored).extracting(s -> s.image().fileName()).containsExactly("imagem-5.png", "imagem-6.png");
+    }
+
+    @Test
+    void slowLeftoverCandidatesDoNotDelayTheAnswer() {
+        var interrupted = new CountDownLatch(1);
+        var downloader = new SafeImageDownloader(Duration.ofSeconds(1), 1024, "test", a -> true, false) {
+            @Override
+            public DownloadedImage download(String url) {
+                if (url.contains("lenta")) {
+                    try {
+                        Thread.sleep(30_000);
+                    } catch (InterruptedException e) {
+                        interrupted.countDown();
+                        throw new ImageRejectedException("interrompido");
+                    }
+                }
+                return new DownloadedImage(PNG, ImageFormat.PNG);
+            }
+        };
+        var store = new GarageImageStore(downloader, s3, resilience, "http://garage:3900", "b", "ai-bot");
+
+        long started = System.nanoTime();
+        var stored = store.storeFirst("1", "c", 1, List.of(hit("rapida"), hit("lenta")), 1);
+
+        assertThat(stored).hasSize(1);
+        assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(5));
+        await().atMost(Duration.ofSeconds(5)).until(() -> interrupted.getCount() == 0);
+    }
+
+    private static ImageHit hit(String title) {
+        return new ImageHit(title, "https://img.example/" + title + ".png", "https://example.org/" + title, "Ex", "");
     }
 }

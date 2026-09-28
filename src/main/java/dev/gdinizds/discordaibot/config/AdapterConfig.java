@@ -62,9 +62,12 @@ public class AdapterConfig {
                                                      HandleMemoryCommandUseCase memoryCommands,
                                                      HandleLimitsCommandUseCase limitsCommands,
                                                      @Qualifier("conversationBulkhead") Bulkhead bulkhead,
-                                                     @Qualifier("conversationExecutor") ExecutorService executor) {
-        return new InboundEventConsumer(objectMapper, mapper, triggerResolver, conversations, memoryCommands,
+                                                     @Qualifier("conversationExecutor") ExecutorService executor,
+                                                     AiBotProperties properties) {
+        var consumer = new InboundEventConsumer(objectMapper, mapper, triggerResolver, conversations, memoryCommands,
                 limitsCommands, bulkhead, executor);
+        consumer.setDrainTimeout(properties.conversation().timeout().plusSeconds(5));
+        return consumer;
     }
 
     @Bean

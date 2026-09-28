@@ -240,6 +240,33 @@ class ConversationServiceTest {
     }
 
     @Test
+    void tokensSpentAfterTheTimeoutAreStillCharged() {
+        timeout = Duration.ofMillis(200);
+        var recorded = new FixedUsage(UsagePort.UserDay.ZERO, 0);
+        usage = new UsageService(recorded, limits(), clock);
+        var finish = new java.util.concurrent.CountDownLatch(1);
+        llm.set(prompt -> {
+            boolean interrupted = false;
+            while (true) {
+                try {
+                    if (finish.await(5, java.util.concurrent.TimeUnit.SECONDS)) break;
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
+            }
+            if (interrupted) Thread.currentThread().interrupt();
+            return new AiAnswer("tarde", List.of(), new TokenUsage(1000, 200), false, List.of(), "gemini-3.5-flash-lite");
+        });
+
+        service().handle(request(TriggerType.SLASH, "demora", null, INTERACTION));
+        assertThat(publisher.last().chunks()).containsExactly(FALLBACK);
+        finish.countDown();
+
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> assertThat(recorded.added).containsExactly("3/2026-09-27/1000/200/800"));
+    }
+
+    @Test
     void openCircuitPublishesFallbackOnTheSameTarget() {
         llm.set(prompt -> {
             throw CallNotPermittedException.createCallNotPermittedException(CircuitBreaker.ofDefaults("gemini-chat"));
