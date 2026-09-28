@@ -51,6 +51,9 @@ class ApplicationContextTest {
         assertThat(properties.reply().placeholderMinDelay()).isEqualTo(Duration.ofMillis(1500));
         assertThat(properties.conversation().timeout()).isEqualTo(Duration.ofSeconds(90));
         assertThat(properties.messages().fallback()).isEqualTo("Não consegui responder agora. Tente de novo em instantes.");
+        assertThat(properties.images().maxPerAnswer()).isEqualTo(4);
+        assertThat(properties.images().maxBytes()).isEqualTo(8_388_608);
+        assertThat(properties.images().keyPrefix()).isEqualTo("ai-bot");
     }
 
     @Test

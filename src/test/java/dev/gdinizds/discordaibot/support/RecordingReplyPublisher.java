@@ -1,6 +1,7 @@
 package dev.gdinizds.discordaibot.support;
 
 import dev.gdinizds.discordaibot.application.port.out.ReplyPublisherPort;
+import dev.gdinizds.discordaibot.domain.model.OutboundImage;
 import dev.gdinizds.discordaibot.domain.model.ReplyTarget;
 
 import java.util.List;
@@ -10,28 +11,30 @@ public class RecordingReplyPublisher implements ReplyPublisherPort {
 
     public enum Kind { PLACEHOLDER, PUBLISH, DIRECT, EPHEMERAL }
 
-    public record Call(Kind kind, ReplyTarget target, String correlationId, List<String> chunks) {}
+    public record Call(Kind kind, ReplyTarget target, String correlationId, List<String> chunks,
+                       List<OutboundImage> images) {}
 
     public final List<Call> calls = new CopyOnWriteArrayList<>();
 
     @Override
     public void placeholder(ReplyTarget target, String correlationId) {
-        calls.add(new Call(Kind.PLACEHOLDER, target, correlationId, List.of()));
+        calls.add(new Call(Kind.PLACEHOLDER, target, correlationId, List.of(), List.of()));
     }
 
     @Override
-    public void publish(ReplyTarget target, String correlationId, List<String> chunks) {
-        calls.add(new Call(Kind.PUBLISH, target, correlationId, chunks));
+    public void publish(ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images) {
+        calls.add(new Call(Kind.PUBLISH, target, correlationId, chunks, images));
     }
 
     @Override
     public void publishDirect(ReplyTarget target, String correlationId, String content) {
-        calls.add(new Call(Kind.DIRECT, target, correlationId, List.of(content)));
+        calls.add(new Call(Kind.DIRECT, target, correlationId, List.of(content), List.of()));
     }
 
     @Override
     public void publishEphemeral(String interactionToken, String correlationId, List<String> chunks) {
-        calls.add(new Call(Kind.EPHEMERAL, new ReplyTarget.Interaction(interactionToken), correlationId, chunks));
+        calls.add(new Call(Kind.EPHEMERAL, new ReplyTarget.Interaction(interactionToken), correlationId, chunks,
+                List.of()));
     }
 
     public List<Kind> kinds() {
@@ -42,4 +45,3 @@ public class RecordingReplyPublisher implements ReplyPublisherPort {
         return calls.getLast();
     }
 }
-

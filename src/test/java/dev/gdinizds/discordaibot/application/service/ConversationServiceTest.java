@@ -12,6 +12,7 @@ import dev.gdinizds.discordaibot.domain.model.ConversationRequest;
 import dev.gdinizds.discordaibot.domain.model.InputAttachment;
 import dev.gdinizds.discordaibot.domain.model.LlmPrompt;
 import dev.gdinizds.discordaibot.domain.model.MediaKind;
+import dev.gdinizds.discordaibot.domain.model.OutboundImage;
 import dev.gdinizds.discordaibot.domain.model.ReplyTarget;
 import dev.gdinizds.discordaibot.domain.model.Role;
 import dev.gdinizds.discordaibot.domain.model.TokenUsage;
@@ -83,6 +84,29 @@ class ConversationServiceTest {
         assertThat(history.turns).extracting(ChatTurn::role).containsExactly(Role.USER, Role.ASSISTANT);
         assertThat(history.turns.getLast().usage()).isEqualTo(new TokenUsage(10, 5));
         assertThat(sentChunks.isOurs("2", ContentHasher.hash("Camberra."))).isTrue();
+    }
+
+    @Test
+    void imagesFromTheAnswerAreSentAndRecordedInTheSession() {
+        var image = new OutboundImage("http://garage/b/ai-bot/1/c/imagem-1.png", "imagem-1.png", "Capivara no lago");
+        llm.set(prompt -> new AiAnswer("Aqui está.", List.of("image_search"), TokenUsage.NONE, false, List.of(image)));
+
+        service().handle(request(TriggerType.MENTION, "me mostra uma capivara", null, CHANNEL));
+
+        assertThat(publisher.last().kind()).isEqualTo(Kind.PUBLISH);
+        assertThat(publisher.last().images()).containsExactly(image);
+        assertThat(history.turns.getLast().content()).isEqualTo("Aqui está.\n[imagem enviada: Capivara no lago]");
+        assertThat(sentChunks.isOurs("2", ContentHasher.hash("Aqui está."))).isTrue();
+    }
+
+    @Test
+    void fallbackNeverCarriesImages() {
+        llm.set(prompt -> { throw new IllegalStateException("gemini down"); });
+
+        service().handle(request(TriggerType.SLASH, "me mostra uma capivara", null, INTERACTION));
+
+        assertThat(publisher.last().chunks()).containsExactly(FALLBACK);
+        assertThat(publisher.last().images()).isEmpty();
     }
 
     @Test

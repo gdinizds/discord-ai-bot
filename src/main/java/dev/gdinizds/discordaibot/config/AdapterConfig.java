@@ -12,6 +12,8 @@ import dev.gdinizds.discordaibot.adapter.out.gemini.tools.ToolSupport;
 import dev.gdinizds.discordaibot.adapter.out.http.OpenMeteoClient;
 import dev.gdinizds.discordaibot.adapter.out.http.SearxngClient;
 import dev.gdinizds.discordaibot.adapter.out.http.WikipediaClient;
+import dev.gdinizds.discordaibot.adapter.out.image.GarageImageStore;
+import dev.gdinizds.discordaibot.adapter.out.image.SafeImageDownloader;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcConversationHistory;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcProcessedEvents;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcSentChunks;
@@ -88,6 +90,16 @@ public class AdapterConfig {
     }
 
     @Bean
+    public SafeImageDownloader imageDownloader(AiBotProperties p) {
+        return new SafeImageDownloader(p.images().downloadTimeout(), p.images().maxBytes(), p.images().userAgent());
+    }
+
+    @Bean
+    public GarageImageStore imageStore(SafeImageDownloader downloader, S3Client s3, Resilience r, AiBotProperties p) {
+        return new GarageImageStore(downloader, s3, r, p.s3().endpoint(), p.s3().bucket(), p.images().keyPrefix());
+    }
+
+    @Bean
     public SearxngClient searxngClient(RestClient.Builder builder, ObjectMapper om, Resilience r, AiBotProperties p) {
         return new SearxngClient(builder, om, r, p.tools().searxngUrl(), p.tools().searxngTimeout());
     }
@@ -118,10 +130,10 @@ public class AdapterConfig {
     @Bean
     public AssistantFactory assistantFactory(ChatModel chatModel, Resilience r, SearxngClient webSearch,
                                              OpenMeteoClient weather, WikipediaClient encyclopedia,
-                                             ManageMemoryUseCase memories, ToolSupport toolSupport,
-                                             AiBotProperties p) {
+                                             ManageMemoryUseCase memories, GarageImageStore imageStore,
+                                             ToolSupport toolSupport, AiBotProperties p) {
         return new AssistantFactory(new ResilientChatModel(chatModel, r), webSearch, weather, encyclopedia,
-                memories, toolSupport, p);
+                memories, webSearch, imageStore, toolSupport, p);
     }
 
     @Bean

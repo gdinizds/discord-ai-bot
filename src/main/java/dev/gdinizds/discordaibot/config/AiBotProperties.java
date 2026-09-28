@@ -23,7 +23,8 @@ public record AiBotProperties(
         @Valid @NotNull Tools tools,
         @Valid @NotNull S3 s3,
         @Valid @NotNull @DefaultValue Conversation conversation,
-        @Valid @NotNull @DefaultValue Messages messages) {
+        @Valid @NotNull @DefaultValue Messages messages,
+        @Valid @NotNull @DefaultValue Images images) {
 
     public record Discord(@NotBlank String botUserId) {}
 
@@ -95,6 +96,15 @@ public record AiBotProperties(
             String secretKey,
             @DefaultValue("garage") String region,
             @DefaultValue("10s") Duration timeout) {}
+
+    public record Images(
+            @DefaultValue("4") @Positive int maxPerAnswer,
+            @DefaultValue("25s") Duration searchTimeout,
+            @DefaultValue("5s") Duration downloadTimeout,
+            @DefaultValue("8388608") @Positive long maxBytes,
+            @DefaultValue("ai-bot") @NotBlank String keyPrefix,
+            @DefaultValue("Mozilla/5.0 (compatible; discord-ai-bot/1.0; +https://github.com/gdinizds/discord-ai-bot)")
+            @NotBlank String userAgent) {}
 
     public record Conversation(
             @DefaultValue("90s") Duration timeout,
