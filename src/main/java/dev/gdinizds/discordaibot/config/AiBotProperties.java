@@ -1,0 +1,109 @@
+package dev.gdinizds.discordaibot.config;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.validation.annotation.Validated;
+
+import java.time.Duration;
+
+@Validated
+@ConfigurationProperties("ai-bot")
+public record AiBotProperties(
+        @Valid @NotNull Discord discord,
+        @Valid @NotNull Topics topics,
+        @Valid @NotNull @DefaultValue Session session,
+        @Valid @NotNull @DefaultValue Memory memory,
+        @Valid @NotNull @DefaultValue Reply reply,
+        @Valid @NotNull @DefaultValue Attachments attachments,
+        @Valid @NotNull Gemini gemini,
+        @Valid @NotNull Tools tools,
+        @Valid @NotNull S3 s3,
+        @Valid @NotNull @DefaultValue Conversation conversation,
+        @Valid @NotNull @DefaultValue Messages messages) {
+
+    public record Discord(@NotBlank String botUserId) {}
+
+    public record Topics(
+            @NotBlank String inboundInteractions,
+            @NotBlank String inboundCommands,
+            @NotBlank String inboundMessages,
+            @NotBlank String outboundResponses,
+            @NotBlank String gatewayCommands) {}
+
+    public record Session(
+            @DefaultValue("20") @Positive int maxExchanges,
+            @DefaultValue("24000") @Positive int maxHistoryChars) {}
+
+    public record Memory(
+            @DefaultValue("5") @Positive int topK,
+            @DefaultValue("0.35") double maxDistance,
+            @DefaultValue("0.08") double dedupDistance,
+            @DefaultValue("200") @Positive int maxPerUser,
+            @DefaultValue("500") @Positive int maxContentChars) {}
+
+    public record Reply(
+            @DefaultValue("1900") @Positive int chunkLimit,
+            @DefaultValue("5") @Positive int maxChunks,
+            @DefaultValue("Pensando...") String placeholderText,
+            @DefaultValue("1500ms") Duration placeholderMinDelay) {}
+
+    public record Attachments(
+            @DefaultValue("4") @Positive int maxCount,
+            @DefaultValue("10485760") @Positive long maxBytes,
+            @DefaultValue("102400") @Positive long textMaxBytes) {}
+
+    public record Gemini(
+            String apiKey,
+            @NotBlank String chatModel,
+            @DefaultValue("gemini-embedding-001") @NotBlank String embeddingModel,
+            @DefaultValue("768") @Positive int embeddingDimensions,
+            @DefaultValue("0.7") double temperature,
+            @DefaultValue("2048") @Positive int maxOutputTokens,
+            @DefaultValue("5") @Positive int maxSequentialToolInvocations,
+            @DefaultValue("75s") Duration chatTimeout,
+            @DefaultValue("5s") Duration embeddingTimeout) {
+
+        public String requireApiKey() {
+            if (apiKey == null || apiKey.isBlank()) {
+                throw new IllegalStateException(
+                        "ai-bot.gemini.api-key is missing; it must come from /vault/secrets/gemini.yaml");
+            }
+            return apiKey;
+        }
+    }
+
+    public record Tools(
+            @NotBlank String searxngUrl,
+            @DefaultValue("https://geocoding-api.open-meteo.com") String openMeteoGeocodingUrl,
+            @DefaultValue("https://api.open-meteo.com") String openMeteoForecastUrl,
+            @DefaultValue("https://{lang}.wikipedia.org") String wikipediaUrl,
+            @NotBlank String wikipediaUserAgent,
+            @DefaultValue("4000") @Positive int maxResultChars,
+            @DefaultValue("5s") Duration searxngTimeout,
+            @DefaultValue("4s") Duration openMeteoTimeout,
+            @DefaultValue("4s") Duration wikipediaTimeout,
+            @DefaultValue("5s") Duration saveMemoryTimeout) {}
+
+    public record S3(
+            @NotBlank String endpoint,
+            @NotBlank String bucket,
+            String accessKey,
+            String secretKey,
+            @DefaultValue("garage") String region,
+            @DefaultValue("10s") Duration timeout) {}
+
+    public record Conversation(
+            @DefaultValue("90s") Duration timeout,
+            @DefaultValue("America/Sao_Paulo") String zone) {}
+
+    public record Messages(
+            @DefaultValue("Não consegui responder agora. Tente de novo em instantes.") String fallback,
+            @DefaultValue("Estou ocupado com muitas perguntas agora, tente em instantes.") String busy,
+            @DefaultValue("Me mande uma pergunta: `.ia sua pergunta`, `/ia` ou uma menção com o texto. "
+                    + "Imagens, PDFs e arquivos de texto funcionam no `.ia` e na menção.") String help) {}
+}
+

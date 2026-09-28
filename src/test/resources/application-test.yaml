@@ -1,0 +1,31 @@
+spring:
+  cloud:
+    consul:
+      enabled: false
+      config:
+        enabled: false
+  kafka:
+    consumer:
+      auto-offset-reset: earliest
+
+ai-bot:
+  discord:
+    bot-user-id: "1000000000000000001"
+  gemini:
+    api-key: ""
+    chat-model: gemini-test
+  tools:
+    searxng-url: http://localhost:1
+  s3:
+    endpoint: http://localhost:1
+    bucket: discord-gateway-attachments
+    access-key: test
+    secret-key: test
+
+management:
+  tracing:
+    enabled: false
+  otlp:
+    tracing:
+      export:
+        enabled: false

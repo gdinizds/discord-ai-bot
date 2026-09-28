@@ -1,0 +1,185 @@
+spring:
+  application:
+    name: discord-ai-bot
+  config:
+    import: "optional:consul:,optional:file:/vault/secrets/db.yaml,optional:file:/vault/secrets/s3.yaml,optional:file:/vault/secrets/gemini.yaml"
+
+  cloud:
+    consul:
+      host: ${SPRING_CLOUD_CONSUL_HOST:consul-server.consul.svc.cluster.local}
+      port: ${SPRING_CLOUD_CONSUL_PORT:8500}
+      config:
+        enabled: true
+        format: YAML
+        data-key: data
+
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
+      connection-timeout: 5000
+
+  flyway:
+    locations: classpath:db/migration
+    schemas: ai_bot
+    default-schema: ai_bot
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:redpanda.redpanda.svc.cluster.local:9093}
+    consumer:
+      group-id: discord-ai-bot
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      acks: all
+      compression-type: lz4
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+
+ai-bot:
+  discord:
+    bot-user-id: ${DISCORD_BOT_USER_ID:}
+  topics:
+    inbound-interactions: discord.events.interaction.command
+    inbound-commands: discord.events.message.command
+    inbound-messages: discord.events.message.created
+    outbound-responses: discord.gateway.responses
+    gateway-commands: discord.gateway.commands
+  session:
+    max-exchanges: 20
+    max-history-chars: 24000
+  memory:
+    top-k: 5
+    max-distance: 0.35
+    dedup-distance: 0.08
+    max-per-user: 200
+  reply:
+    chunk-limit: 1900
+    max-chunks: 5
+    placeholder-text: "Pensando..."
+    placeholder-min-delay: 1500ms
+  attachments:
+    max-count: 4
+    max-bytes: 10485760
+  conversation:
+    timeout: 90s
+    zone: America/Sao_Paulo
+  gemini:
+    api-key: ${gemini.api-key:}
+    chat-model: ${GEMINI_CHAT_MODEL:}
+    embedding-model: gemini-embedding-001
+    embedding-dimensions: 768
+    temperature: 0.7
+    max-output-tokens: 2048
+    max-sequential-tool-invocations: 5
+  tools:
+    searxng-url: ${SEARXNG_URL:http://searxng.searxng.svc.cluster.local:8080}
+    wikipedia-user-agent: "discord-ai-bot/1.0 (+https://github.com/gdinizds/discord-ai-bot)"
+  s3:
+    endpoint: ${GARAGE_ENDPOINT:http://garage.garage.svc.cluster.local:3900}
+    bucket: ${GARAGE_BUCKET:discord-gateway-attachments}
+    access-key: ${GARAGE_ACCESS_KEY:}
+    secret-key: ${GARAGE_SECRET_KEY:}
+    region: ${GARAGE_REGION:garage}
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      http-tool:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        permitted-number-of-calls-in-half-open-state: 3
+    instances:
+      gemini-chat:
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        slow-call-duration-threshold: 60s
+        slow-call-rate-threshold: 80
+        ignore-exceptions:
+          - dev.gdinizds.discordaibot.adapter.out.gemini.ContentBlockedException
+          - dev.gdinizds.discordaibot.adapter.out.gemini.InvalidLlmRequestException
+      gemini-embedding:
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+      searxng:    { base-config: http-tool, wait-duration-in-open-state: 30s }
+      open-meteo: { base-config: http-tool, wait-duration-in-open-state: 60s }
+      wikipedia:  { base-config: http-tool, wait-duration-in-open-state: 60s }
+      garage:     { base-config: http-tool, wait-duration-in-open-state: 60s }
+      database:
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+  timelimiter:
+    instances:
+      gemini-chat:      { timeout-duration: 75s, cancel-running-future: true }
+      gemini-embedding: { timeout-duration: 5s,  cancel-running-future: true }
+      searxng:          { timeout-duration: 5s,  cancel-running-future: true }
+      open-meteo:       { timeout-duration: 4s,  cancel-running-future: true }
+      wikipedia:        { timeout-duration: 4s,  cancel-running-future: true }
+      garage:           { timeout-duration: 10s, cancel-running-future: true }
+  retry:
+    instances:
+      gemini-chat:
+        max-attempts: 2
+        wait-duration: 2s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - dev.gdinizds.discordaibot.adapter.out.gemini.RateLimitedException
+          - dev.gdinizds.discordaibot.adapter.out.gemini.ServiceUnavailableException
+      gemini-embedding:
+        max-attempts: 2
+        wait-duration: 500ms
+        ignore-exceptions: [io.github.resilience4j.circuitbreaker.CallNotPermittedException]
+      garage:
+        max-attempts: 2
+        wait-duration: 500ms
+        ignore-exceptions: [io.github.resilience4j.circuitbreaker.CallNotPermittedException]
+      database:
+        max-attempts: 3
+        wait-duration: 500ms
+        ignore-exceptions:
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+          - org.springframework.dao.DataIntegrityViolationException
+  bulkhead:
+    instances:
+      conversation: { max-concurrent-calls: 32, max-wait-duration: 0 }
+      gemini-chat:  { max-concurrent-calls: 16, max-wait-duration: 10s }
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics, circuitbreakers, retries
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState, db, kafka
+  health:
+    circuitbreakers:
+      enabled: false
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
