@@ -21,9 +21,9 @@ abstract class IntegrationTest {
         registry.add("spring.datasource.password", TestContainers.POSTGRES::getPassword);
         registry.add("spring.kafka.bootstrap-servers", TestContainers.REDPANDA::getBootstrapServers);
         registry.add("spring.kafka.consumer.group-id", () -> "discord-ai-bot-it");
-        registry.add("ai-bot.s3.endpoint", TestContainers.MINIO::getS3URL);
-        registry.add("ai-bot.s3.access-key", TestContainers.MINIO::getUserName);
-        registry.add("ai-bot.s3.secret-key", TestContainers.MINIO::getPassword);
+        registry.add("ai-bot.s3.endpoint", TestContainers::s3Url);
+        registry.add("ai-bot.s3.access-key", () -> TestContainers.S3_ACCESS_KEY);
+        registry.add("ai-bot.s3.secret-key", () -> TestContainers.S3_SECRET_KEY);
         registry.add("ai-bot.s3.bucket", () -> TestContainers.BUCKET);
         registry.add("ai-bot.s3.region", () -> "us-east-1");
         registry.add("ai-bot.tools.searxng-url", TestContainers.WIREMOCK::baseUrl);

@@ -67,7 +67,6 @@ dependencies {
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
     testImplementation 'org.testcontainers:testcontainers-postgresql'
     testImplementation 'org.testcontainers:testcontainers-redpanda'
-    testImplementation 'org.testcontainers:testcontainers-minio'
     testImplementation "org.wiremock:wiremock-standalone:${wiremockVersion}"
     testImplementation 'org.awaitility:awaitility'
     testRuntimeOnly 'com.h2database:h2'
