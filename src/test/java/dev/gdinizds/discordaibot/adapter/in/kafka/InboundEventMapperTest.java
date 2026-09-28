@@ -103,6 +103,16 @@ class InboundEventMapperTest {
     }
 
     @Test
+    void limitsCommandCarriesTheOwnerAndToken() {
+        var command = mapper.toLimitsCommand(parse("ia-memoria-esquecer"));
+
+        assertThat(command.userId()).isEqualTo("700000000000000001");
+        assertThat(command.guildId()).isEqualTo("900000000000000001");
+        assertThat(command.interactionToken()).isEqualTo("token-memoria-1");
+        assertThat(command.correlationId()).isEqualTo("0192a3b4-0000-7000-8000-000000000009");
+    }
+
+    @Test
     void memoryCommandReadsActionAndId() {
         var command = mapper.toMemoryCommand(parse("ia-memoria-esquecer"));
         assertThat(command.action()).isEqualTo("esquecer");

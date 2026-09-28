@@ -7,7 +7,7 @@ import java.time.Duration;
 
 public interface MetricsPort {
 
-    enum Outcome { ANSWERED, FALLBACK, IGNORED, DUPLICATE }
+    enum Outcome { ANSWERED, FALLBACK, IGNORED, DUPLICATE, LIMITED }
 
     enum Stage { CONTEXT, LLM, PUBLISH, TOTAL }
 

@@ -3,6 +3,7 @@ package dev.gdinizds.discordaibot.adapter.in.kafka;
 import dev.gdinizds.discordaibot.domain.model.ConversationKey;
 import dev.gdinizds.discordaibot.domain.model.ConversationRequest;
 import dev.gdinizds.discordaibot.domain.model.InputAttachment;
+import dev.gdinizds.discordaibot.domain.model.LimitsCommand;
 import dev.gdinizds.discordaibot.domain.model.MediaKind;
 import dev.gdinizds.discordaibot.domain.model.MemoryCommand;
 import dev.gdinizds.discordaibot.domain.model.ReplyTarget;
@@ -51,6 +52,10 @@ public class InboundEventMapper {
                 ? MentionParser.stripMention(content, botUserId)
                 : content;
         return request(event, trigger, prompt, referencedContent(raw), attachments(event), channelTarget(event));
+    }
+
+    public LimitsCommand toLimitsCommand(InboundEvent event) {
+        return new LimitsCommand(event.correlationId(), event.guildId(), event.userId(), event.interactionToken());
     }
 
     public MemoryCommand toMemoryCommand(InboundEvent event) {

@@ -125,6 +125,19 @@ class GeminiLlmAdapterTest {
     }
 
     @Test
+    void thinkingTokensAreCountedAsBilledOutput() {
+        model.then(request -> dev.langchain4j.model.chat.response.ChatResponse.builder()
+                .aiMessage(AiMessage.from("ok"))
+                .tokenUsage(new dev.langchain4j.model.output.TokenUsage(100, 20, 420))
+                .build());
+
+        AiAnswer answer = adapter().answer(prompt("oi", List.of()));
+
+        assertThat(answer.usage().input()).isEqualTo(100);
+        assertThat(answer.usage().output()).isEqualTo(320);
+    }
+
+    @Test
     void rateLimitIsTranslatedAndRetried() {
         retries.retry("gemini-chat", RetryConfig.custom()
                 .maxAttempts(2)
@@ -146,7 +159,8 @@ class GeminiLlmAdapterTest {
                 new AiBotProperties.Tools("http://searxng", "http://geo", "http://forecast", "http://{lang}.wiki",
                         "ua", 4000, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)),
                 null, null, null,
-                new AiBotProperties.Images(4, Duration.ofSeconds(5), Duration.ofSeconds(1), 1_000_000, "ai-bot", "ua"));
+                new AiBotProperties.Images(4, Duration.ofSeconds(5), Duration.ofSeconds(1), 1_000_000, "ai-bot", "ua"),
+                null);
         ManageMemoryUseCase memories = new ManageMemoryUseCase() {
             @Override public MemorySaveResult save(String g, String u, String c, String cat, String cid) { return MemorySaveResult.INSERTED; }
             @Override public List<UserMemory> list(String g, String u) { return List.of(); }

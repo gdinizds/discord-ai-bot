@@ -5,6 +5,7 @@ import dev.gdinizds.discordaibot.application.port.out.EmbeddingPort;
 import dev.gdinizds.discordaibot.application.port.out.LlmPort;
 import dev.gdinizds.discordaibot.application.port.out.MetricsPort;
 import dev.gdinizds.discordaibot.application.port.out.SentChunkPort;
+import dev.gdinizds.discordaibot.application.port.out.UsagePort;
 import dev.gdinizds.discordaibot.domain.model.AiAnswer;
 import dev.gdinizds.discordaibot.domain.model.ChatTurn;
 import dev.gdinizds.discordaibot.domain.model.ConversationKey;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -69,6 +71,7 @@ class ConversationServiceTest {
             prompt -> new AiAnswer("Camberra.", List.of("web_search"), new TokenUsage(10, 5), false));
 
     private Duration timeout = Duration.ofSeconds(5);
+    private UsageService usage = UsageService.unlimited(clock);
 
     @AfterEach
     void shutdown() {
@@ -107,6 +110,64 @@ class ConversationServiceTest {
 
         assertThat(publisher.last().chunks()).containsExactly(FALLBACK);
         assertThat(publisher.last().images()).isEmpty();
+    }
+
+    @Test
+    void userOverTheDailyLimitGetsTheLimitMessageWithoutCallingTheModel() {
+        usage = new UsageService(new FixedUsage(new UsagePort.UserDay(150, 0), 0), limits(), clock);
+
+        service().handle(request(TriggerType.MENTION, "oi de novo", null, CHANNEL));
+
+        assertThat(publisher.kinds()).containsExactly(Kind.DIRECT);
+        assertThat(publisher.last().chunks()).containsExactly("limite diário");
+        assertThat(llmCalls).hasValue(0);
+    }
+
+    @Test
+    void monthlyBudgetReachedBlocksEveryone() {
+        usage = new UsageService(new FixedUsage(UsagePort.UserDay.ZERO, 20_000_000), limits(), clock);
+
+        service().handle(request(TriggerType.SLASH, "oi", null, INTERACTION));
+
+        assertThat(publisher.last().chunks()).containsExactly("limite mensal");
+        assertThat(llmCalls).hasValue(0);
+    }
+
+    @Test
+    void answeredConversationIsRecordedWithItsCost() {
+        var recorded = new FixedUsage(UsagePort.UserDay.ZERO, 0);
+        usage = new UsageService(recorded, limits(), clock);
+        llm.set(prompt -> new AiAnswer("Camberra.", List.of(), new TokenUsage(1000, 200), false, List.of(),
+                "gemini-3.5-flash-lite"));
+
+        service().handle(request(TriggerType.SLASH, "capital?", null, INTERACTION));
+
+        assertThat(recorded.added).containsExactly("3/2026-09-27/1000/200/800");
+    }
+
+    private static UsageSettings limits() {
+        return new UsageSettings(true, 6, 150, 5.00, 10.00, 20.00,
+                Map.of("gemini-3.5-flash-lite", new UsageSettings.ModelPrice(0.30, 2.50)),
+                new UsageSettings.ModelPrice(1.50, 9.00), Set.of(), ZoneId.of("America/Sao_Paulo"),
+                new UsageSettings.Messages("rajada", "limite diário", "limite mensal do usuário", "limite mensal"));
+    }
+
+    private static class FixedUsage implements UsagePort {
+        final UserDay day;
+        final long month;
+        final List<String> added = new CopyOnWriteArrayList<>();
+
+        FixedUsage(UserDay day, long month) {
+            this.day = day;
+            this.month = month;
+        }
+
+        @Override public UserDay userDay(String userId, LocalDate date) { return day; }
+        @Override public long costMicroUsdBetween(LocalDate from, LocalDate to) { return month; }
+        @Override public long userCostMicroUsdBetween(String userId, LocalDate from, LocalDate to) { return 0; }
+        @Override public void add(String userId, LocalDate date, TokenUsage tokens, long cost) {
+            added.add(userId + "/" + date + "/" + tokens.input() + "/" + tokens.output() + "/" + cost);
+        }
     }
 
     @Test
@@ -266,7 +327,7 @@ class ConversationServiceTest {
                     return new byte[]{1, 2, 3};
                 },
                 countingLlm, new ContextAssembler(settings, clock), new MessageSplitter(1900, 5, FALLBACK),
-                MetricsPort.NOOP, settings, clock, executor, sleeps::add);
+                MetricsPort.NOOP, settings, clock, executor, sleeps::add, usage);
     }
 
     private ConversationRequest request(TriggerType trigger, String prompt, String quoted, ReplyTarget target) {

@@ -41,7 +41,7 @@ class GatewayResponsePublisherTest {
                 new AiBotProperties.Topics("a", "b", "c", TOPIC, "e"),
                 null, null,
                 new AiBotProperties.Reply(1900, 5, "Pensando...", Duration.ofMillis(1500)),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
         publisher = new GatewayResponsePublisher(kafka, objectMapper, properties);
     }
 

@@ -17,9 +17,11 @@ import dev.gdinizds.discordaibot.adapter.out.image.SafeImageDownloader;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcConversationHistory;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcProcessedEvents;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcSentChunks;
+import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUsage;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUserMemory;
 import dev.gdinizds.discordaibot.adapter.out.s3.GarageAttachmentFetcher;
 import dev.gdinizds.discordaibot.application.port.in.HandleConversationUseCase;
+import dev.gdinizds.discordaibot.application.port.in.HandleLimitsCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleMemoryCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.ManageMemoryUseCase;
 import dev.gdinizds.discordaibot.application.port.out.LlmPort;
@@ -58,10 +60,11 @@ public class AdapterConfig {
                                                      TriggerResolver triggerResolver,
                                                      HandleConversationUseCase conversations,
                                                      HandleMemoryCommandUseCase memoryCommands,
+                                                     HandleLimitsCommandUseCase limitsCommands,
                                                      @Qualifier("conversationBulkhead") Bulkhead bulkhead,
                                                      @Qualifier("conversationExecutor") ExecutorService executor) {
         return new InboundEventConsumer(objectMapper, mapper, triggerResolver, conversations, memoryCommands,
-                bulkhead, executor);
+                limitsCommands, bulkhead, executor);
     }
 
     @Bean
@@ -77,6 +80,11 @@ public class AdapterConfig {
     @Bean
     public JdbcUserMemory userMemory(JdbcClient jdbc, TransactionTemplate tx, Resilience r) {
         return new JdbcUserMemory(jdbc, tx, r);
+    }
+
+    @Bean
+    public JdbcUsage usage(JdbcClient jdbc, Resilience r) {
+        return new JdbcUsage(jdbc, r);
     }
 
     @Bean
@@ -137,12 +145,13 @@ public class AdapterConfig {
     }
 
     @Bean
-    public LlmPort llmAdapter(AssistantFactory assistants, ObjectProvider<FallbackChatModel> fallback, Resilience r) {
-        LlmPort primary = new GeminiLlmAdapter(assistants);
+    public LlmPort llmAdapter(AssistantFactory assistants, ObjectProvider<FallbackChatModel> fallback, Resilience r,
+                              AiBotProperties p) {
+        LlmPort primary = new GeminiLlmAdapter(assistants, p.gemini().chatModel());
         FallbackChatModel secondary = fallback.getIfAvailable();
         if (secondary == null) return primary;
         LlmPort backup = new GeminiLlmAdapter(assistants.withChatModel(
-                new ResilientChatModel(secondary.model(), r, ResilientChatModel.FALLBACK_INSTANCE)));
+                new ResilientChatModel(secondary.model(), r, ResilientChatModel.FALLBACK_INSTANCE)), secondary.name());
         return new FailoverLlmAdapter(primary, backup, secondary.name());
     }
 }

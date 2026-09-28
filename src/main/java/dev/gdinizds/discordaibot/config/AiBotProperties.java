@@ -9,6 +9,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 @Validated
 @ConfigurationProperties("ai-bot")
@@ -24,7 +26,8 @@ public record AiBotProperties(
         @Valid @NotNull S3 s3,
         @Valid @NotNull @DefaultValue Conversation conversation,
         @Valid @NotNull @DefaultValue Messages messages,
-        @Valid @NotNull @DefaultValue Images images) {
+        @Valid @NotNull @DefaultValue Images images,
+        @Valid @NotNull @DefaultValue Limits limits) {
 
     public record Discord(@NotBlank String botUserId) {}
 
@@ -96,6 +99,27 @@ public record AiBotProperties(
             String secretKey,
             @DefaultValue("garage") String region,
             @DefaultValue("10s") Duration timeout) {}
+
+    public record Limits(
+            @DefaultValue("true") boolean enabled,
+            @DefaultValue("6") @Positive int perUserPerMinute,
+            @DefaultValue("150") @Positive int perUserDailyRequests,
+            @DefaultValue("5.00") double perUserDailyUsd,
+            @DefaultValue("10.00") double perUserMonthlyUsd,
+            @DefaultValue("20.00") double monthlyUsd,
+            @DefaultValue("1.50") double defaultInputPrice,
+            @DefaultValue("9.00") double defaultOutputPrice,
+            Map<String, Price> prices,
+            List<String> exemptUserIds,
+            @DefaultValue("Muitas perguntas seguidas. Espere um minuto e tente de novo.") String burstLimitMessage,
+            @DefaultValue("Você atingiu seu limite diário de uso da IA. Tente de novo amanhã.") String userLimitMessage,
+            @DefaultValue("Você atingiu seu limite mensal de uso da IA. Ele renova no começo do próximo mês.")
+            String userMonthlyLimitMessage,
+            @DefaultValue("O limite mensal de uso da IA do servidor foi atingido. Ela volta no começo do próximo mês.")
+            String monthlyLimitMessage) {
+
+        public record Price(double input, double output) {}
+    }
 
     public record Images(
             @DefaultValue("4") @Positive int maxPerAnswer,

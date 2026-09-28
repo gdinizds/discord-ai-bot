@@ -13,10 +13,14 @@ import dev.gdinizds.discordaibot.application.port.out.UserMemoryPort;
 import dev.gdinizds.discordaibot.application.service.ContextAssembler;
 import dev.gdinizds.discordaibot.application.service.ConversationService;
 import dev.gdinizds.discordaibot.application.service.ConversationSettings;
+import dev.gdinizds.discordaibot.application.service.LimitsCommandService;
 import dev.gdinizds.discordaibot.application.service.MemoryCommandService;
 import dev.gdinizds.discordaibot.application.service.MemoryService;
 import dev.gdinizds.discordaibot.application.service.MemorySettings;
 import dev.gdinizds.discordaibot.application.service.Sleeper;
+import dev.gdinizds.discordaibot.application.service.UsageService;
+import dev.gdinizds.discordaibot.application.service.UsageSettings;
+import dev.gdinizds.discordaibot.application.port.out.UsagePort;
 import dev.gdinizds.discordaibot.domain.service.MessageSplitter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +28,9 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 @Configuration
@@ -53,6 +60,29 @@ public class ApplicationConfig {
     }
 
     @Bean
+    public UsageService usageService(UsagePort usage, AiBotProperties p, Clock clock) {
+        var limits = p.limits();
+        Map<String, UsageSettings.ModelPrice> prices = new HashMap<>();
+        if (limits.prices() != null) {
+            limits.prices().forEach((model, price) ->
+                    prices.put(model, new UsageSettings.ModelPrice(price.input(), price.output())));
+        }
+        return new UsageService(usage, new UsageSettings(
+                limits.enabled(),
+                limits.perUserPerMinute(),
+                limits.perUserDailyRequests(),
+                limits.perUserDailyUsd(),
+                limits.perUserMonthlyUsd(),
+                limits.monthlyUsd(),
+                prices,
+                new UsageSettings.ModelPrice(limits.defaultInputPrice(), limits.defaultOutputPrice()),
+                limits.exemptUserIds() == null ? null : new HashSet<>(limits.exemptUserIds()),
+                ZoneId.of(p.conversation().zone()),
+                new UsageSettings.Messages(limits.burstLimitMessage(), limits.userLimitMessage(),
+                        limits.userMonthlyLimitMessage(), limits.monthlyLimitMessage())), clock);
+    }
+
+    @Bean
     public MessageSplitter messageSplitter(AiBotProperties p) {
         return new MessageSplitter(p.reply().chunkLimit(), p.reply().maxChunks(), p.messages().fallback());
     }
@@ -77,15 +107,23 @@ public class ApplicationConfig {
     }
 
     @Bean
+    public LimitsCommandService limitsCommandService(UsageService usage, ProcessedEventPort processedEvents,
+                                                     ReplyPublisherPort replyPublisher, AiBotProperties p) {
+        return new LimitsCommandService(usage, processedEvents, replyPublisher, p.messages().fallback());
+    }
+
+    @Bean
     public ConversationService conversationService(ProcessedEventPort processedEvents, SentChunkPort sentChunks,
                                                    ReplyPublisherPort replyPublisher, ConversationHistoryPort history,
                                                    EmbeddingPort embedding, UserMemoryPort userMemory,
                                                    AttachmentFetcherPort attachmentFetcher, LlmPort llm,
                                                    ContextAssembler contextAssembler, MessageSplitter splitter,
                                                    MetricsPort metrics, ConversationSettings settings, Clock clock,
-                                                   @Qualifier("conversationExecutor") ExecutorService executor) {
+                                                   @Qualifier("conversationExecutor") ExecutorService executor,
+                                                   UsageService usage) {
         return new ConversationService(processedEvents, sentChunks, replyPublisher, history, embedding, userMemory,
-                attachmentFetcher, llm, contextAssembler, splitter, metrics, settings, clock, executor, Sleeper.SYSTEM);
+                attachmentFetcher, llm, contextAssembler, splitter, metrics, settings, clock, executor, Sleeper.SYSTEM,
+                usage);
     }
 }
 
