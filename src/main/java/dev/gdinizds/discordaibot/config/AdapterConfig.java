@@ -21,6 +21,7 @@ import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUsage;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUserMemory;
 import dev.gdinizds.discordaibot.adapter.out.s3.GarageAttachmentFetcher;
 import dev.gdinizds.discordaibot.application.port.in.HandleConversationUseCase;
+import dev.gdinizds.discordaibot.application.port.in.HandleLimitsCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleMemoryCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.ManageMemoryUseCase;
 import dev.gdinizds.discordaibot.application.port.out.LlmPort;
@@ -59,10 +60,11 @@ public class AdapterConfig {
                                                      TriggerResolver triggerResolver,
                                                      HandleConversationUseCase conversations,
                                                      HandleMemoryCommandUseCase memoryCommands,
+                                                     HandleLimitsCommandUseCase limitsCommands,
                                                      @Qualifier("conversationBulkhead") Bulkhead bulkhead,
                                                      @Qualifier("conversationExecutor") ExecutorService executor) {
         return new InboundEventConsumer(objectMapper, mapper, triggerResolver, conversations, memoryCommands,
-                bulkhead, executor);
+                limitsCommands, bulkhead, executor);
     }
 
     @Bean

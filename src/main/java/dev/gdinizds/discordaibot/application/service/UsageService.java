@@ -18,6 +18,13 @@ public class UsageService {
 
     public enum Decision { ALLOWED, USER_BURST_LIMIT, USER_DAILY_LIMIT, USER_MONTHLY_LIMIT, MONTHLY_LIMIT }
 
+    public record Report(boolean enabled, boolean exempt,
+                         int userDayRequests, int userDayRequestLimit,
+                         long userDayMicroUsd, double userDayLimitUsd,
+                         long userMonthMicroUsd, double userMonthLimitUsd,
+                         long monthMicroUsd, double monthLimitUsd,
+                         int perMinute, String zone) {}
+
     private static final Logger log = LoggerFactory.getLogger(UsageService.class);
     private static final Duration BURST_WINDOW = Duration.ofMinutes(1);
 
@@ -61,6 +68,22 @@ public class UsageService {
             log.warn("Usage check unavailable, allowing request: {}", e.toString());
             return Decision.ALLOWED;
         }
+    }
+
+    public Report report(String userId) {
+        if (!settings.enabled()) {
+            return new Report(false, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, settings.zone().getId());
+        }
+        LocalDate today = today();
+        LocalDate monthStart = today.withDayOfMonth(1);
+        LocalDate nextMonth = monthStart.plusMonths(1);
+        UsagePort.UserDay day = usage.userDay(userId, today);
+        return new Report(true, settings.exemptUserIds().contains(userId),
+                day.requests(), settings.perUserDailyRequests(),
+                day.costMicroUsd(), settings.perUserDailyUsd(),
+                usage.userCostMicroUsdBetween(userId, monthStart, nextMonth), settings.perUserMonthlyUsd(),
+                usage.costMicroUsdBetween(monthStart, nextMonth), settings.monthlyUsd(),
+                settings.perUserPerMinute(), settings.zone().getId());
     }
 
     public void record(String userId, AiAnswer answer) {

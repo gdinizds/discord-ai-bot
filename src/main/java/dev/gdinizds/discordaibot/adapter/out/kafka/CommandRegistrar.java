@@ -48,6 +48,16 @@ public class CommandRegistrar implements ApplicationRunner {
             }
             """;
 
+    static final String SLASH_IA_LIMITES = """
+            {
+              "prefix": "SLASH",
+              "name": "ia-limites",
+              "description": "Veja quanto você e o servidor já usaram da IA",
+              "ephemeral": true,
+              "is_deleted": false
+            }
+            """;
+
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final String topic;
 
@@ -62,7 +72,8 @@ public class CommandRegistrar implements ApplicationRunner {
             kafkaTemplate.send(topic, "ia", SLASH_IA);
             kafkaTemplate.send(topic, "ia", DOT_IA);
             kafkaTemplate.send(topic, "ia-memoria", SLASH_IA_MEMORIA);
-            log.info("Discord commands registered: /ia, .ia, /ia-memoria");
+            kafkaTemplate.send(topic, "ia-limites", SLASH_IA_LIMITES);
+            log.info("Discord commands registered: /ia, .ia, /ia-memoria, /ia-limites");
         } catch (RuntimeException e) {
 
             log.error("Failed to register Discord commands: {}", e.toString());

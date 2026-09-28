@@ -13,6 +13,7 @@ import dev.gdinizds.discordaibot.application.port.out.UserMemoryPort;
 import dev.gdinizds.discordaibot.application.service.ContextAssembler;
 import dev.gdinizds.discordaibot.application.service.ConversationService;
 import dev.gdinizds.discordaibot.application.service.ConversationSettings;
+import dev.gdinizds.discordaibot.application.service.LimitsCommandService;
 import dev.gdinizds.discordaibot.application.service.MemoryCommandService;
 import dev.gdinizds.discordaibot.application.service.MemoryService;
 import dev.gdinizds.discordaibot.application.service.MemorySettings;
@@ -103,6 +104,12 @@ public class ApplicationConfig {
                                                      ReplyPublisherPort replyPublisher, MessageSplitter splitter,
                                                      AiBotProperties p) {
         return new MemoryCommandService(memories, processedEvents, replyPublisher, splitter, p.messages().fallback());
+    }
+
+    @Bean
+    public LimitsCommandService limitsCommandService(UsageService usage, ProcessedEventPort processedEvents,
+                                                     ReplyPublisherPort replyPublisher, AiBotProperties p) {
+        return new LimitsCommandService(usage, processedEvents, replyPublisher, p.messages().fallback());
     }
 
     @Bean

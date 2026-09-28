@@ -108,6 +108,24 @@ class UsageServiceTest {
     }
 
     @Test
+    void reportShowsUsageAgainstEachLimit() {
+        port.day = new UsagePort.UserDay(12, 1_250_000);
+        port.userMonth = 3_400_000;
+        port.month = 7_000_000;
+
+        var report = service(true, Set.of()).report("42");
+
+        assertThat(report.enabled()).isTrue();
+        assertThat(report.exempt()).isFalse();
+        assertThat(report.userDayRequests()).isEqualTo(12);
+        assertThat(report.userDayMicroUsd()).isEqualTo(1_250_000);
+        assertThat(report.userMonthMicroUsd()).isEqualTo(3_400_000);
+        assertThat(report.monthMicroUsd()).isEqualTo(7_000_000);
+        assertThat(report.monthLimitUsd()).isEqualTo(20.00);
+        assertThat(port.dayQueried).isEqualTo(LocalDate.of(2026, 9, 30));
+    }
+
+    @Test
     void costUsesTheModelPriceAndFallsBackToTheDefaultPrice() {
         var service = service(true, Set.of());
         var tokens = new TokenUsage(1_000, 200);

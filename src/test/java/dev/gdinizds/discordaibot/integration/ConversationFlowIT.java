@@ -93,6 +93,17 @@ class ConversationFlowIT extends IntegrationTest {
     }
 
     @Test
+    void limitsCommandAnswersWithTheUsageReport() {
+        String cid = publish(INTERACTIONS, "ia-limites", "ia-memoria-esquecer");
+
+        List<JsonNode> out = awaitResponses(cid, 1);
+
+        assertThat(out.getFirst().path("responseType").asString()).isEqualTo("DEFERRED_REPLY");
+        assertThat(out.getFirst().path("content").asString()).contains("Seus limites de uso da IA", "Total da IA neste mês");
+        assertThat(model.requests()).isEmpty();
+    }
+
+    @Test
     void longAnswerIsSplitWithFinishedOnlyOnTheLast() {
         model.thenAnswer(String.join("\n\n", "a".repeat(1500), "b".repeat(1500), "c".repeat(1500)));
         String cid = publish(INTERACTIONS, "ia", "slash-ia");

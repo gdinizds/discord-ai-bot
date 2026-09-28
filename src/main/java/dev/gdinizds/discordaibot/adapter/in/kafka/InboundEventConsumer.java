@@ -1,6 +1,7 @@
 package dev.gdinizds.discordaibot.adapter.in.kafka;
 
 import dev.gdinizds.discordaibot.application.port.in.HandleConversationUseCase;
+import dev.gdinizds.discordaibot.application.port.in.HandleLimitsCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleMemoryCommandUseCase;
 import dev.gdinizds.discordaibot.domain.model.ConversationRequest;
 import io.github.resilience4j.bulkhead.Bulkhead;
@@ -25,18 +26,21 @@ public class InboundEventConsumer {
     private final TriggerResolver triggerResolver;
     private final HandleConversationUseCase conversations;
     private final HandleMemoryCommandUseCase memoryCommands;
+    private final HandleLimitsCommandUseCase limitsCommands;
     private final Bulkhead bulkhead;
     private final ExecutorService executor;
 
     public InboundEventConsumer(ObjectMapper objectMapper, InboundEventMapper mapper,
                                 TriggerResolver triggerResolver, HandleConversationUseCase conversations,
-                                HandleMemoryCommandUseCase memoryCommands, Bulkhead bulkhead,
+                                HandleMemoryCommandUseCase memoryCommands,
+                                HandleLimitsCommandUseCase limitsCommands, Bulkhead bulkhead,
                                 @Qualifier("conversationExecutor") ExecutorService executor) {
         this.objectMapper = objectMapper;
         this.mapper = mapper;
         this.triggerResolver = triggerResolver;
         this.conversations = conversations;
         this.memoryCommands = memoryCommands;
+        this.limitsCommands = limitsCommands;
         this.bulkhead = bulkhead;
         this.executor = executor;
     }
@@ -51,6 +55,12 @@ public class InboundEventConsumer {
                 var command = mapper.toMemoryCommand(event);
                 executor.execute(() -> withMdc(command.correlationId(), command.guildId(), "MEMORY",
                         () -> memoryCommands.handle(command)));
+            });
+        } else if ("ia-limites".equals(commandName)) {
+            parse(payload).ifPresent(event -> {
+                var command = mapper.toLimitsCommand(event);
+                executor.execute(() -> withMdc(command.correlationId(), command.guildId(), "LIMITS",
+                        () -> limitsCommands.handle(command)));
             });
         }
     }
