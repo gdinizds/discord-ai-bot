@@ -108,6 +108,14 @@ resilience4j:
         ignore-exceptions:
           - dev.gdinizds.discordaibot.adapter.out.gemini.ContentBlockedException
           - dev.gdinizds.discordaibot.adapter.out.gemini.InvalidLlmRequestException
+      gemini-chat-fallback:
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        ignore-exceptions:
+          - dev.gdinizds.discordaibot.adapter.out.gemini.ContentBlockedException
+          - dev.gdinizds.discordaibot.adapter.out.gemini.InvalidLlmRequestException
       gemini-embedding:
         sliding-window-size: 20
         failure-rate-threshold: 50
@@ -123,6 +131,7 @@ resilience4j:
   timelimiter:
     instances:
       gemini-chat:      { timeout-duration: 75s, cancel-running-future: true }
+      gemini-chat-fallback: { timeout-duration: 60s, cancel-running-future: true }
       gemini-embedding: { timeout-duration: 5s,  cancel-running-future: true }
       searxng:          { timeout-duration: 5s,  cancel-running-future: true }
       open-meteo:       { timeout-duration: 4s,  cancel-running-future: true }

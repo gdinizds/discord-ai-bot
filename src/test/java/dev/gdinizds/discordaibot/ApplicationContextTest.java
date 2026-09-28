@@ -68,6 +68,12 @@ class ApplicationContextTest {
     }
 
     @Test
+    void withoutAFallbackModelTheLlmPortIsThePlainAdapter() {
+        assertThat(llm).isInstanceOf(dev.gdinizds.discordaibot.adapter.out.gemini.GeminiLlmAdapter.class);
+        assertThat(circuitBreakers.find("gemini-chat-fallback")).isPresent();
+    }
+
+    @Test
     void llmPortRunsOnTheScriptedModel() {
         scriptedChatModel.thenAnswer("oi do dublê");
         var prompt = new LlmPrompt("c", new ConversationKey("1", "2", "3"),
