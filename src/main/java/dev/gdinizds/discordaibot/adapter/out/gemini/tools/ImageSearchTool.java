@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ImageSearchTool {
@@ -57,6 +59,14 @@ public class ImageSearchTool {
         return support.run("image_search", timeout, UNAVAILABLE, () -> attach(query, wanted));
     }
 
+    static String reason(RuntimeException e) {
+        Throwable root = e;
+        while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+        String message = root.getMessage() == null ? "" : root.getMessage().replaceAll("\\s+", " ").strip();
+        if (message.length() > 80) message = message.substring(0, 80);
+        return root.getClass().getSimpleName() + (message.isEmpty() ? "" : ": " + message);
+    }
+
     public List<OutboundImage> attached() {
         return List.copyOf(attached);
     }
@@ -64,14 +74,19 @@ public class ImageSearchTool {
     private String attach(String query, int wanted) {
         List<ImageHit> candidates = search.searchImages(query, Math.min(wanted * CANDIDATES_PER_IMAGE, MAX_CANDIDATES));
         List<ImageHit> sent = new ArrayList<>();
+        Map<String, Integer> failures = new TreeMap<>();
         for (ImageHit hit : candidates) {
             if (sent.size() >= wanted || attached.size() >= maxImages) break;
             try {
                 attached.add(store.store(guildId, correlationId, attached.size() + 1, hit));
                 sent.add(hit);
             } catch (RuntimeException e) {
-                log.debug("Image candidate skipped: {}", e.getMessage());
+                failures.merge(reason(e), 1, Integer::sum);
             }
+        }
+        if (sent.size() < wanted) {
+            log.warn("Image search attached {} of {} requested: candidates={} failures={}",
+                    sent.size(), wanted, candidates.size(), failures);
         }
         if (sent.isEmpty()) {
             return candidates.isEmpty()

@@ -152,6 +152,17 @@ class ToolsTest {
         assertThat(toolCalls).containsExactly("image_search:false");
     }
 
+    @Test
+    void imageFailureReasonUsesTheRootCause() {
+        var wrapped = new IllegalStateException("garage",
+                new RuntimeException("Access Denied: key discord-ai-bot has no write permission on bucket discord-gateway-attachments"));
+
+        assertThat(ImageSearchTool.reason(wrapped))
+                .startsWith("RuntimeException: Access Denied: key discord-ai-bot")
+                .hasSizeLessThanOrEqualTo("RuntimeException: ".length() + 80);
+        assertThat(ImageSearchTool.reason(new IllegalStateException())).isEqualTo("IllegalStateException");
+    }
+
     private static ImageHit hit(String title) {
         return new ImageHit(title, "https://img.example/" + title.replace(' ', '-') + ".png",
                 "https://example.org/" + title.replace(' ', '-'), "Exemplo", "640 x 480");
