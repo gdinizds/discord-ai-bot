@@ -17,6 +17,9 @@ import dev.gdinizds.discordaibot.application.service.MemoryCommandService;
 import dev.gdinizds.discordaibot.application.service.MemoryService;
 import dev.gdinizds.discordaibot.application.service.MemorySettings;
 import dev.gdinizds.discordaibot.application.service.Sleeper;
+import dev.gdinizds.discordaibot.application.service.UsageService;
+import dev.gdinizds.discordaibot.application.service.UsageSettings;
+import dev.gdinizds.discordaibot.application.port.out.UsagePort;
 import dev.gdinizds.discordaibot.domain.service.MessageSplitter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +27,9 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 @Configuration
@@ -50,6 +56,27 @@ public class ApplicationConfig {
                 p.messages().fallback(),
                 p.messages().busy(),
                 p.messages().help());
+    }
+
+    @Bean
+    public UsageService usageService(UsagePort usage, AiBotProperties p, Clock clock) {
+        var limits = p.limits();
+        Map<String, UsageSettings.ModelPrice> prices = new HashMap<>();
+        if (limits.prices() != null) {
+            limits.prices().forEach((model, price) ->
+                    prices.put(model, new UsageSettings.ModelPrice(price.input(), price.output())));
+        }
+        return new UsageService(usage, new UsageSettings(
+                limits.enabled(),
+                limits.perUserDailyRequests(),
+                limits.perUserDailyUsd(),
+                limits.monthlyUsd(),
+                prices,
+                new UsageSettings.ModelPrice(limits.defaultInputPrice(), limits.defaultOutputPrice()),
+                limits.exemptUserIds() == null ? null : new HashSet<>(limits.exemptUserIds()),
+                ZoneId.of(p.conversation().zone()),
+                limits.userLimitMessage(),
+                limits.monthlyLimitMessage()), clock);
     }
 
     @Bean
@@ -83,9 +110,11 @@ public class ApplicationConfig {
                                                    AttachmentFetcherPort attachmentFetcher, LlmPort llm,
                                                    ContextAssembler contextAssembler, MessageSplitter splitter,
                                                    MetricsPort metrics, ConversationSettings settings, Clock clock,
-                                                   @Qualifier("conversationExecutor") ExecutorService executor) {
+                                                   @Qualifier("conversationExecutor") ExecutorService executor,
+                                                   UsageService usage) {
         return new ConversationService(processedEvents, sentChunks, replyPublisher, history, embedding, userMemory,
-                attachmentFetcher, llm, contextAssembler, splitter, metrics, settings, clock, executor, Sleeper.SYSTEM);
+                attachmentFetcher, llm, contextAssembler, splitter, metrics, settings, clock, executor, Sleeper.SYSTEM,
+                usage);
     }
 }
 

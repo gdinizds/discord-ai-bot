@@ -24,9 +24,15 @@ import java.util.Objects;
 public class GeminiLlmAdapter implements LlmPort {
 
     private final AssistantFactory assistants;
+    private final String model;
 
     public GeminiLlmAdapter(AssistantFactory assistants) {
+        this(assistants, null);
+    }
+
+    public GeminiLlmAdapter(AssistantFactory assistants, String model) {
         this.assistants = assistants;
+        this.model = model;
     }
 
     @Override
@@ -48,7 +54,7 @@ public class GeminiLlmAdapter implements LlmPort {
                 .distinct()
                 .toList();
         return new AiAnswer(Objects.requireNonNullElse(result.content(), ""), toolsUsed, usage(result), false,
-                session.images().get());
+                session.images().get(), model);
     }
 
     private static List<Content> currentContents(LlmPrompt prompt) {
@@ -67,9 +73,11 @@ public class GeminiLlmAdapter implements LlmPort {
     private static TokenUsage usage(Result<String> result) {
         var usage = result.tokenUsage();
         if (usage == null) return TokenUsage.NONE;
-        return new TokenUsage(
-                Objects.requireNonNullElse(usage.inputTokenCount(), 0),
-                Objects.requireNonNullElse(usage.outputTokenCount(), 0));
+        int input = Objects.requireNonNullElse(usage.inputTokenCount(), 0);
+        int output = Objects.requireNonNullElse(usage.outputTokenCount(), 0);
+        Integer total = usage.totalTokenCount();
+        if (total != null && total - input > output) output = total - input;
+        return new TokenUsage(input, output);
     }
 }
 

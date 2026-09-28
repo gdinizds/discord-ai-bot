@@ -60,6 +60,7 @@ public class ConversationService implements HandleConversationUseCase {
     private final Clock clock;
     private final ExecutorService executor;
     private final Sleeper sleeper;
+    private final UsageService usage;
 
     public ConversationService(ProcessedEventPort processedEvents, SentChunkPort sentChunks,
                                ReplyPublisherPort replyPublisher, ConversationHistoryPort history,
@@ -67,7 +68,7 @@ public class ConversationService implements HandleConversationUseCase {
                                AttachmentFetcherPort attachmentFetcher, LlmPort llm,
                                ContextAssembler contextAssembler, MessageSplitter splitter,
                                MetricsPort metrics, ConversationSettings settings, Clock clock,
-                               ExecutorService executor, Sleeper sleeper) {
+                               ExecutorService executor, Sleeper sleeper, UsageService usage) {
         this.processedEvents = processedEvents;
         this.sentChunks = sentChunks;
         this.replyPublisher = replyPublisher;
@@ -83,6 +84,7 @@ public class ConversationService implements HandleConversationUseCase {
         this.clock = clock;
         this.executor = executor;
         this.sleeper = sleeper;
+        this.usage = usage;
     }
 
     @Override
@@ -91,6 +93,14 @@ public class ConversationService implements HandleConversationUseCase {
         if (!shouldAnswer(request)) return;
 
         ReplyTarget target = request.target();
+        UsageService.Decision decision = usage.check(request.key().userId());
+        if (decision != UsageService.Decision.ALLOWED) {
+            replyPublisher.publishDirect(target, request.correlationId(), usage.message(decision));
+            metrics.request(request.trigger(), Outcome.LIMITED);
+            log.info("Conversation limited: trigger={} reason={}", request.trigger(), decision);
+            return;
+        }
+
         Instant placeholderAt = null;
         if (target instanceof ReplyTarget.Channel) {
             replyPublisher.placeholder(target, request.correlationId());
@@ -98,6 +108,7 @@ public class ConversationService implements HandleConversationUseCase {
         }
 
         AiAnswer answer = generateWithinBudget(request);
+        if (!answer.fallback()) usage.record(request.key().userId(), answer);
         List<String> chunks = answer.fallback()
                 ? List.of(settings.fallbackText())
                 : splitter.split(answer.text());

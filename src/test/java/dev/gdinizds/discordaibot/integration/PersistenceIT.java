@@ -2,6 +2,9 @@ package dev.gdinizds.discordaibot.integration;
 
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcProcessedEvents;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcSentChunks;
+import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUsage;
+import dev.gdinizds.discordaibot.application.port.out.UsagePort;
+import dev.gdinizds.discordaibot.domain.model.TokenUsage;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUserMemory;
 import dev.gdinizds.discordaibot.application.port.out.UserMemoryPort.NewMemory;
 import dev.gdinizds.discordaibot.domain.model.ConversationKey;
@@ -23,12 +26,13 @@ class PersistenceIT extends IntegrationTest {
     @Autowired JdbcUserMemory userMemory;
     @Autowired JdbcSentChunks sentChunks;
     @Autowired JdbcProcessedEvents processedEvents;
+    @Autowired JdbcUsage usage;
 
     @Test
     void flywayAppliesAllMigrationsAndPartmanKeepsEightDays() {
         int applied = jdbc.sql("SELECT count(*) FROM ai_bot.flyway_schema_history WHERE success AND version IS NOT NULL")
                 .query(Integer.class).single();
-        assertThat(applied).isEqualTo(5);
+        assertThat(applied).isEqualTo(6);
 
         List<String> retention = jdbc.sql("""
                         SELECT retention FROM partman.part_config
@@ -87,6 +91,19 @@ class PersistenceIT extends IntegrationTest {
         assertThat(sentChunks.isOurs("555", ContentHasher.hash("resposta do bot\r\n"))).isTrue();
         assertThat(sentChunks.isOurs("555", ContentHasher.hash("outra coisa"))).isFalse();
         assertThat(sentChunks.isOurs("556", ContentHasher.hash("resposta do bot"))).isFalse();
+    }
+
+    @Test
+    void usageAccumulatesPerUserDayAndSumsTheMonth() {
+        var day = java.time.LocalDate.of(2031, 5, 10);
+        usage.add("555", day, new TokenUsage(1000, 200), 800);
+        usage.add("555", day, new TokenUsage(500, 100), 400);
+        usage.add("556", day, new TokenUsage(10, 10), 30);
+        usage.add("555", day.plusMonths(1), new TokenUsage(10, 10), 99_999);
+
+        assertThat(usage.userDay("555", day)).isEqualTo(new UsagePort.UserDay(2, 1200));
+        assertThat(usage.userDay("555", day.minusDays(1))).isEqualTo(UsagePort.UserDay.ZERO);
+        assertThat(usage.costMicroUsdBetween(day.withDayOfMonth(1), day.withDayOfMonth(1).plusMonths(1))).isEqualTo(1230);
     }
 
     @Test

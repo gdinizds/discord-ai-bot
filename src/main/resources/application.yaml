@@ -53,7 +53,7 @@ ai-bot:
     gateway-commands: discord.gateway.commands
   session:
     max-exchanges: 20
-    max-history-chars: 24000
+    max-history-chars: 12000
   memory:
     top-k: 5
     max-distance: 0.35
@@ -61,12 +61,22 @@ ai-bot:
     max-per-user: 200
   reply:
     chunk-limit: 1900
-    max-chunks: 5
+    max-chunks: 3
     placeholder-text: "Pensando..."
     placeholder-min-delay: 1500ms
   attachments:
     max-count: 4
     max-bytes: 10485760
+  limits:
+    enabled: true
+    per-user-daily-requests: 25
+    per-user-daily-usd: 0.10
+    monthly-usd: 8.00
+    default-input-price: 1.50
+    default-output-price: 9.00
+    prices:
+      "[gemini-3.5-flash-lite]": { input: 0.30, output: 2.50 }
+      "[gemini-3.5-flash]": { input: 1.50, output: 9.00 }
   images:
     max-per-answer: 4
     search-timeout: 25s
@@ -82,7 +92,8 @@ ai-bot:
     embedding-model: gemini-embedding-001
     embedding-dimensions: 768
     temperature: 0.7
-    max-output-tokens: 2048
+    max-output-tokens: 1536
+    thinking-level: low
     max-sequential-tool-invocations: 5
   tools:
     searxng-url: ${SEARXNG_URL:http://searxng.searxng.svc.cluster.local:8080}

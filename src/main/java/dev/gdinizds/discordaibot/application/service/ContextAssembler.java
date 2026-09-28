@@ -29,6 +29,20 @@ public class ContextAssembler {
             - Nunca mencione @everyone, @here nem cargos.
             - Respostas longas viram várias mensagens; prefira respostas enxutas.""";
 
+    private static final String SCOPE = """
+            Escopo e tamanho:
+            - Isto é um chat do Discord. Atenda dúvidas pontuais, explicações curtas e trechos pequenos de \
+            código, de até 30 linhas.
+            - Não gere projetos inteiros, sistemas completos, clones de sites ou apps, vários arquivos, nem \
+            código longo (exemplo: "crie a OLX em COBOL"). Nesses casos, em até 6 linhas: diga que isso não \
+            cabe no chat, indique um agente de código como Claude Code, OpenAI Codex, Google Antigravity ou \
+            Cursor, e dê de 3 a 5 dicas de como escrever o pedido para ele (objetivo, stack, escopo mínimo, \
+            exemplos de entrada e saída, critério de pronto).
+            - Perguntas sem sentido, spam, provocações ou testes repetidos: responda com uma frase curta e \
+            não use ferramentas.
+            - Prefira no máximo 3 parágrafos curtos. Só se estenda se o usuário pedir e o assunto exigir.
+            - Não use ferramentas quando conhecimento geral basta.""";
+
     private static final String TOOLS = """
             Ferramentas:
             - web_search: fatos atuais, notícias, preços, versões e eventos recentes. Cite as URLs usadas.
@@ -95,7 +109,7 @@ public class ContextAssembler {
     }
 
     String systemPrompt(ConversationRequest request, List<UserMemory> memories) {
-        StringBuilder sb = new StringBuilder(IDENTITY).append("\n\nContexto:\n");
+        StringBuilder sb = new StringBuilder(IDENTITY).append("\n\n").append(SCOPE).append("\n\nContexto:\n");
         sb.append("- Agora: ").append(DATE_TIME.format(ZonedDateTime.now(clock.withZone(settings.zone()))))
                 .append(" (").append(settings.zone().getId()).append(")\n");
         if (request.guildName() != null) sb.append("- Servidor: ").append(request.guildName()).append('\n');

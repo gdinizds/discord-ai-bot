@@ -9,6 +9,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 @Validated
 @ConfigurationProperties("ai-bot")
@@ -24,7 +26,8 @@ public record AiBotProperties(
         @Valid @NotNull S3 s3,
         @Valid @NotNull @DefaultValue Conversation conversation,
         @Valid @NotNull @DefaultValue Messages messages,
-        @Valid @NotNull @DefaultValue Images images) {
+        @Valid @NotNull @DefaultValue Images images,
+        @Valid @NotNull @DefaultValue Limits limits) {
 
     public record Discord(@NotBlank String botUserId) {}
 
@@ -96,6 +99,22 @@ public record AiBotProperties(
             String secretKey,
             @DefaultValue("garage") String region,
             @DefaultValue("10s") Duration timeout) {}
+
+    public record Limits(
+            @DefaultValue("true") boolean enabled,
+            @DefaultValue("25") @Positive int perUserDailyRequests,
+            @DefaultValue("0.10") double perUserDailyUsd,
+            @DefaultValue("8.00") double monthlyUsd,
+            @DefaultValue("1.50") double defaultInputPrice,
+            @DefaultValue("9.00") double defaultOutputPrice,
+            Map<String, Price> prices,
+            List<String> exemptUserIds,
+            @DefaultValue("Você atingiu seu limite diário de uso da IA. Tente de novo amanhã.") String userLimitMessage,
+            @DefaultValue("O limite mensal de uso da IA foi atingido. Ela volta no começo do próximo mês.")
+            String monthlyLimitMessage) {
+
+        public record Price(double input, double output) {}
+    }
 
     public record Images(
             @DefaultValue("4") @Positive int maxPerAnswer,
