@@ -28,7 +28,7 @@ class PersistenceIT extends IntegrationTest {
     void flywayAppliesAllMigrationsAndPartmanKeepsEightDays() {
         int applied = jdbc.sql("SELECT count(*) FROM ai_bot.flyway_schema_history WHERE success AND version IS NOT NULL")
                 .query(Integer.class).single();
-        assertThat(applied).isEqualTo(6);
+        assertThat(applied).isEqualTo(5);
 
         List<String> retention = jdbc.sql("""
                         SELECT retention FROM partman.part_config
