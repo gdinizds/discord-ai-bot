@@ -68,15 +68,17 @@ public class ApplicationConfig {
         }
         return new UsageService(usage, new UsageSettings(
                 limits.enabled(),
+                limits.perUserPerMinute(),
                 limits.perUserDailyRequests(),
                 limits.perUserDailyUsd(),
+                limits.perUserMonthlyUsd(),
                 limits.monthlyUsd(),
                 prices,
                 new UsageSettings.ModelPrice(limits.defaultInputPrice(), limits.defaultOutputPrice()),
                 limits.exemptUserIds() == null ? null : new HashSet<>(limits.exemptUserIds()),
                 ZoneId.of(p.conversation().zone()),
-                limits.userLimitMessage(),
-                limits.monthlyLimitMessage()), clock);
+                new UsageSettings.Messages(limits.burstLimitMessage(), limits.userLimitMessage(),
+                        limits.userMonthlyLimitMessage(), limits.monthlyLimitMessage())), clock);
     }
 
     @Bean

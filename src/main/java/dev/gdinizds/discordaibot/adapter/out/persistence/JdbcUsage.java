@@ -43,6 +43,19 @@ public class JdbcUsage implements UsagePort {
     }
 
     @Override
+    public long userCostMicroUsdBetween(String userId, LocalDate from, LocalDate toExclusive) {
+        return resilience.call(Instances.DATABASE, () -> jdbc.sql("""
+                        SELECT coalesce(sum(cost_micro_usd), 0) FROM ai_bot.usage_daily
+                         WHERE user_id = :user AND day >= :from AND day < :to
+                        """)
+                .param("user", Ids.snowflake(userId))
+                .param("from", from)
+                .param("to", toExclusive)
+                .query(Long.class)
+                .single());
+    }
+
+    @Override
     public void add(String userId, LocalDate day, TokenUsage usage, long costMicroUsd) {
         resilience.run(Instances.DATABASE, () -> jdbc.sql("""
                         INSERT INTO ai_bot.usage_daily

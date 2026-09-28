@@ -14,5 +14,7 @@ public interface UsagePort {
 
     long costMicroUsdBetween(LocalDate from, LocalDate toExclusive);
 
+    long userCostMicroUsdBetween(String userId, LocalDate from, LocalDate toExclusive);
+
     void add(String userId, LocalDate day, TokenUsage usage, long costMicroUsd);
 }

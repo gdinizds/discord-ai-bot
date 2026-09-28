@@ -104,6 +104,8 @@ class PersistenceIT extends IntegrationTest {
         assertThat(usage.userDay("555", day)).isEqualTo(new UsagePort.UserDay(2, 1200));
         assertThat(usage.userDay("555", day.minusDays(1))).isEqualTo(UsagePort.UserDay.ZERO);
         assertThat(usage.costMicroUsdBetween(day.withDayOfMonth(1), day.withDayOfMonth(1).plusMonths(1))).isEqualTo(1230);
+        assertThat(usage.userCostMicroUsdBetween("555", day.withDayOfMonth(1), day.withDayOfMonth(1).plusMonths(1)))
+                .isEqualTo(1200);
     }
 
     @Test

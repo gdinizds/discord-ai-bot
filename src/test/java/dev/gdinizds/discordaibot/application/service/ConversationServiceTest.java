@@ -114,7 +114,7 @@ class ConversationServiceTest {
 
     @Test
     void userOverTheDailyLimitGetsTheLimitMessageWithoutCallingTheModel() {
-        usage = new UsageService(new FixedUsage(new UsagePort.UserDay(25, 0), 0), limits(), clock);
+        usage = new UsageService(new FixedUsage(new UsagePort.UserDay(150, 0), 0), limits(), clock);
 
         service().handle(request(TriggerType.MENTION, "oi de novo", null, CHANNEL));
 
@@ -125,7 +125,7 @@ class ConversationServiceTest {
 
     @Test
     void monthlyBudgetReachedBlocksEveryone() {
-        usage = new UsageService(new FixedUsage(UsagePort.UserDay.ZERO, 8_000_000), limits(), clock);
+        usage = new UsageService(new FixedUsage(UsagePort.UserDay.ZERO, 20_000_000), limits(), clock);
 
         service().handle(request(TriggerType.SLASH, "oi", null, INTERACTION));
 
@@ -146,10 +146,10 @@ class ConversationServiceTest {
     }
 
     private static UsageSettings limits() {
-        return new UsageSettings(true, 25, 0.10, 8.00,
+        return new UsageSettings(true, 6, 150, 5.00, 10.00, 20.00,
                 Map.of("gemini-3.5-flash-lite", new UsageSettings.ModelPrice(0.30, 2.50)),
                 new UsageSettings.ModelPrice(1.50, 9.00), Set.of(), ZoneId.of("America/Sao_Paulo"),
-                "limite diário", "limite mensal");
+                new UsageSettings.Messages("rajada", "limite diário", "limite mensal do usuário", "limite mensal"));
     }
 
     private static class FixedUsage implements UsagePort {
@@ -164,6 +164,7 @@ class ConversationServiceTest {
 
         @Override public UserDay userDay(String userId, LocalDate date) { return day; }
         @Override public long costMicroUsdBetween(LocalDate from, LocalDate to) { return month; }
+        @Override public long userCostMicroUsdBetween(String userId, LocalDate from, LocalDate to) { return 0; }
         @Override public void add(String userId, LocalDate date, TokenUsage tokens, long cost) {
             added.add(userId + "/" + date + "/" + tokens.input() + "/" + tokens.output() + "/" + cost);
         }
