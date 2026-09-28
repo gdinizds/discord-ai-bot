@@ -20,6 +20,8 @@ public class GeminiConfig {
                 .modelName(gemini.chatModel())
                 .temperature(gemini.temperature())
                 .maxOutputTokens(gemini.maxOutputTokens())
+                .returnThinking(true)
+                .sendThinking(true)
                 .timeout(gemini.chatTimeout())
                 .maxRetries(0)
                 .build();
