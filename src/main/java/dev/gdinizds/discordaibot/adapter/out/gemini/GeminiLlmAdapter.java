@@ -40,14 +40,15 @@ public class GeminiLlmAdapter implements LlmPort {
             });
         }
 
-        Result<String> result = assistants.create(prompt.key(), prompt.correlationId(), memory)
-                .chat(currentContents(prompt));
+        AssistantFactory.Session session = assistants.create(prompt.key(), prompt.correlationId(), memory);
+        Result<String> result = session.assistant().chat(currentContents(prompt));
 
         List<String> toolsUsed = result.toolExecutions() == null ? List.of() : result.toolExecutions().stream()
                 .map(execution -> execution.request().name())
                 .distinct()
                 .toList();
-        return new AiAnswer(Objects.requireNonNullElse(result.content(), ""), toolsUsed, usage(result), false);
+        return new AiAnswer(Objects.requireNonNullElse(result.content(), ""), toolsUsed, usage(result), false,
+                session.images().get());
     }
 
     private static List<Content> currentContents(LlmPrompt prompt) {

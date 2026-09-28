@@ -18,6 +18,7 @@ import dev.gdinizds.discordaibot.domain.model.ConversationRequest;
 import dev.gdinizds.discordaibot.domain.model.InputAttachment;
 import dev.gdinizds.discordaibot.domain.model.LlmPrompt;
 import dev.gdinizds.discordaibot.domain.model.MediaKind;
+import dev.gdinizds.discordaibot.domain.model.OutboundImage;
 import dev.gdinizds.discordaibot.domain.model.ReplyTarget;
 import dev.gdinizds.discordaibot.domain.model.Role;
 import dev.gdinizds.discordaibot.domain.model.ScoredMemory;
@@ -104,7 +105,8 @@ public class ConversationService implements HandleConversationUseCase {
         waitForPlaceholder(placeholderAt);
         long publishStarted = System.nanoTime();
         try {
-            replyPublisher.publish(target, request.correlationId(), chunks);
+            replyPublisher.publish(target, request.correlationId(), chunks,
+                    answer.fallback() ? List.of() : answer.images());
         } catch (RuntimeException e) {
             log.error("Failed to publish answer: {}", e.toString());
             metrics.request(request.trigger(), Outcome.FALLBACK);
@@ -285,13 +287,23 @@ public class ConversationService implements HandleConversationUseCase {
         }
     }
 
+    static String assistantText(List<String> chunks, List<OutboundImage> images) {
+        StringBuilder text = new StringBuilder(String.join("\n", chunks));
+        for (OutboundImage image : images) {
+            text.append("\n[imagem enviada: ")
+                    .append(image.description() == null ? image.fileName() : image.description())
+                    .append(']');
+        }
+        return text.toString();
+    }
+
     private void persist(ConversationRequest request, AiAnswer answer, List<String> chunks) {
         Instant now = clock.instant();
         try {
             history.append(List.of(
                     new ChatTurn(request.key(), Role.USER, ContextAssembler.historyText(request),
                             request.correlationId(), request.trigger(), null, request.receivedAt()),
-                    new ChatTurn(request.key(), Role.ASSISTANT, String.join("\n", chunks),
+                    new ChatTurn(request.key(), Role.ASSISTANT, assistantText(chunks, answer.images()),
                             request.correlationId(), request.trigger(), answer.usage(), now)));
         } catch (RuntimeException e) {
             log.warn("Could not persist session turns: {}", e.toString());

@@ -1,6 +1,7 @@
 package dev.gdinizds.discordaibot.adapter.out.kafka;
 
 import dev.gdinizds.discordaibot.config.AiBotProperties;
+import dev.gdinizds.discordaibot.domain.model.OutboundImage;
 import dev.gdinizds.discordaibot.domain.model.ReplyTarget;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,7 @@ class GatewayResponsePublisherTest {
                 new AiBotProperties.Topics("a", "b", "c", TOPIC, "e"),
                 null, null,
                 new AiBotProperties.Reply(1900, 5, "Pensando...", Duration.ofMillis(1500)),
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
         publisher = new GatewayResponsePublisher(kafka, objectMapper, properties);
     }
 
@@ -81,6 +82,30 @@ class GatewayResponsePublisherTest {
             assertThat(n.has("finished")).isFalse();
             assertThat(n.has("interactionToken")).isFalse();
         });
+    }
+
+    @Test
+    void imagesGoOnlyOnTheLastMessage() {
+        var image = new OutboundImage("http://garage:3900/bucket/ai-bot/g/cid/imagem-1.png", "imagem-1.png", "Capivara");
+        publisher.publish(new ReplyTarget.Interaction("tok"), "cid", List.of("um", "dois"), List.of(image));
+
+        List<JsonNode> sent = sent(2);
+        assertThat(sent.getFirst().has("attachments")).isFalse();
+        JsonNode attachment = sent.getLast().path("attachments").get(0);
+        assertThat(attachment.path("url").asString()).isEqualTo("http://garage:3900/bucket/ai-bot/g/cid/imagem-1.png");
+        assertThat(attachment.path("name").asString()).isEqualTo("imagem-1.png");
+        assertThat(attachment.path("description").asString()).isEqualTo("Capivara");
+        assertThat(sent.getLast().path("finished").asBoolean()).isTrue();
+    }
+
+    @Test
+    void singleChannelChunkCarriesTheImagesOnTheEdit() {
+        var image = new OutboundImage("http://garage:3900/bucket/k.jpg", "imagem-1.jpg", null);
+        publisher.publish(new ReplyTarget.Channel("chan", "origin"), "cid", List.of("aqui"), List.of(image));
+
+        JsonNode only = sent(1).getFirst();
+        assertThat(only.path("responseType").asString()).isEqualTo("UPDATE_MESSAGE");
+        assertThat(only.path("attachments").get(0).has("description")).isFalse();
     }
 
     @Test

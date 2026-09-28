@@ -9,9 +9,11 @@ import dev.gdinizds.discordaibot.domain.model.AiAnswer;
 import dev.gdinizds.discordaibot.domain.model.BinaryPart;
 import dev.gdinizds.discordaibot.domain.model.ChatTurn;
 import dev.gdinizds.discordaibot.domain.model.ConversationKey;
+import dev.gdinizds.discordaibot.domain.model.ImageHit;
 import dev.gdinizds.discordaibot.domain.model.LlmPrompt;
 import dev.gdinizds.discordaibot.domain.model.MediaKind;
 import dev.gdinizds.discordaibot.domain.model.MemorySaveResult;
+import dev.gdinizds.discordaibot.domain.model.OutboundImage;
 import dev.gdinizds.discordaibot.domain.model.Role;
 import dev.gdinizds.discordaibot.domain.model.SearchHit;
 import dev.gdinizds.discordaibot.domain.model.TriggerType;
@@ -100,6 +102,29 @@ class GeminiLlmAdapterTest {
     }
 
     @Test
+    void imageSearchAttachesImagesToTheAnswer() {
+        model.thenCallTool("image_search", "{\"query\":\"capivara\",\"count\":1}")
+                .thenAnswer("Aqui está uma capivara.");
+
+        AiAnswer answer = adapter().answer(prompt("me mostra uma capivara", List.of()));
+
+        assertThat(answer.toolsUsed()).containsExactly("image_search");
+        assertThat(answer.images()).singleElement().satisfies(image -> {
+            assertThat(image.url()).isEqualTo("http://garage:3900/b/ai-bot/1/c1/imagem-1.jpg");
+            assertThat(image.description()).isEqualTo("Capivara no lago");
+        });
+        assertThat(model.requests().get(1).messages().getLast()).isInstanceOfSatisfying(ToolExecutionResultMessage.class,
+                result -> assertThat(result.text()).contains("Anexei 1 imagem", "Capivara no lago", "Wikimedia"));
+    }
+
+    @Test
+    void answerWithoutImageToolHasNoImages() {
+        model.thenAnswer("oi");
+
+        assertThat(adapter().answer(prompt("oi", List.of())).images()).isEmpty();
+    }
+
+    @Test
     void rateLimitIsTranslatedAndRetried() {
         retries.retry("gemini-chat", RetryConfig.custom()
                 .maxAttempts(2)
@@ -120,7 +145,8 @@ class GeminiLlmAdapterTest {
                         Duration.ofSeconds(75), Duration.ofSeconds(5)),
                 new AiBotProperties.Tools("http://searxng", "http://geo", "http://forecast", "http://{lang}.wiki",
                         "ua", 4000, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)),
-                null, null, null);
+                null, null, null,
+                new AiBotProperties.Images(4, Duration.ofSeconds(5), Duration.ofSeconds(1), 1_000_000, "ai-bot", "ua"));
         ManageMemoryUseCase memories = new ManageMemoryUseCase() {
             @Override public MemorySaveResult save(String g, String u, String c, String cat, String cid) { return MemorySaveResult.INSERTED; }
             @Override public List<UserMemory> list(String g, String u) { return List.of(); }
@@ -134,7 +160,13 @@ class GeminiLlmAdapterTest {
                 },
                 (city, days) -> Optional.empty(),
                 (query, lang) -> Optional.empty(),
-                memories, support, properties);
+                memories,
+                (query, limit) -> List.of(new ImageHit("Capivara no lago", "https://img.example/capivara.jpg",
+                        "https://example.org/capivara", "Wikimedia", "800 x 600")),
+                (guildId, correlationId, index, hit) -> new OutboundImage(
+                        "http://garage:3900/b/ai-bot/" + guildId + "/" + correlationId + "/imagem-" + index + ".jpg",
+                        "imagem-" + index + ".jpg", hit.title()),
+                support, properties);
         return new GeminiLlmAdapter(factory);
     }
 

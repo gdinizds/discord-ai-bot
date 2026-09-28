@@ -34,6 +34,8 @@ public class ContextAssembler {
             - web_search: fatos atuais, notícias, preços, versões e eventos recentes. Cite as URLs usadas.
             - weather: previsão do tempo de uma cidade.
             - wikipedia: definições e fatos enciclopédicos estáveis.
+            - image_search: quando o usuário pedir para ver ou receber imagens; as imagens seguem anexadas \
+            à resposta. Nunca escreva links de imagem inventados.
             - save_memory: só para fatos duráveis que o próprio usuário disse sobre si (preferências, \
             stack, projetos, como quer ser tratado). Nunca salve dados sensíveis (documentos, senhas, \
             tokens, saúde, finanças) nem fatos sobre outras pessoas.""";

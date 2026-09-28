@@ -77,6 +77,31 @@ class SearxngCircuitBreakerTest {
     }
 
     @Test
+    void imageSearchParsesImageResultsWithStrictSafeSearch() {
+        wireMock.stubFor(get(urlPathEqualTo("/search")).willReturn(aResponse()
+                .withHeader("Content-Type", "application/json")
+                .withBody("""
+                        {"results":[
+                          {"title":"Capivara","url":"https://p/1","img_src":"https://i/1.jpg","source":"Wikimedia","resolution":"800 x 600"},
+                          {"title":"Sem imagem","url":"https://p/2","img_src":""},
+                          {"title":"Duplicada","url":"https://p/3","img_src":"https://i/1.jpg"},
+                          {"title":"Relativa","url":"https://p/4","img_src":"//i/4.jpg"},
+                          {"title":"Outra","url":"https://p/5","img_src":"https://i/5.png","engine":"bing images"},
+                          {"title":"Excedente","url":"https://p/6","img_src":"https://i/6.png"}]}
+                        """)));
+
+        var hits = client.searchImages("capivara", 2);
+
+        assertThat(hits).extracting("imageUrl").containsExactly("https://i/1.jpg", "https://i/5.png");
+        assertThat(hits.getFirst().source()).isEqualTo("Wikimedia");
+        assertThat(hits.getLast().source()).isEqualTo("bing images");
+        assertThat(hits.getFirst().resolution()).isEqualTo("800 x 600");
+        wireMock.verify(getRequestedFor(urlPathEqualTo("/search"))
+                .withQueryParam("categories", com.github.tomakehurst.wiremock.client.WireMock.equalTo("images"))
+                .withQueryParam("safesearch", com.github.tomakehurst.wiremock.client.WireMock.equalTo("2")));
+    }
+
+    @Test
     void failuresOpenTheCircuitAndLaterCallsDoNotReachTheServer() {
         wireMock.stubFor(get(urlPathEqualTo("/search")).willReturn(aResponse().withStatus(500)));
 

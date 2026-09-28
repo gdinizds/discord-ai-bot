@@ -15,8 +15,16 @@ public record GatewayResponse(
         @JsonInclude(JsonInclude.Include.NON_EMPTY)
         List<Object> embeds,
         @JsonInclude(JsonInclude.Include.NON_EMPTY)
-        List<Object> attachments,
+        List<Attachment> attachments,
         Boolean finished) {
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Attachment(String url, String name, String description) {}
+
+    public GatewayResponse withAttachments(List<Attachment> files) {
+        return new GatewayResponse(responseType, interactionToken, messageId, channelId, correlationId,
+                content, embeds, files, finished);
+    }
 
     public static GatewayResponse deferredReply(String interactionToken, String correlationId,
                                                 String content, boolean finished) {

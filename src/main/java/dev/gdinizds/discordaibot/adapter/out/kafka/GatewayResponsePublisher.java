@@ -2,6 +2,7 @@ package dev.gdinizds.discordaibot.adapter.out.kafka;
 
 import dev.gdinizds.discordaibot.application.port.out.ReplyPublisherPort;
 import dev.gdinizds.discordaibot.config.AiBotProperties;
+import dev.gdinizds.discordaibot.domain.model.OutboundImage;
 import dev.gdinizds.discordaibot.domain.model.ReplyTarget;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class GatewayResponsePublisher implements ReplyPublisherPort {
     }
 
     @Override
-    public void publish(ReplyTarget target, String correlationId, List<String> chunks) {
+    public void publish(ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images) {
         List<GatewayResponse> responses = new ArrayList<>(chunks.size());
         for (int i = 0; i < chunks.size(); i++) {
             String chunk = chunks.get(i);
@@ -53,6 +54,12 @@ public class GatewayResponsePublisher implements ReplyPublisherPort {
                         ? GatewayResponse.updateMessage(channelId, originMessageId, correlationId, chunk)
                         : GatewayResponse.channelReply(channelId, originMessageId, correlationId, chunk);
             });
+        }
+        if (!images.isEmpty() && !responses.isEmpty()) {
+            List<GatewayResponse.Attachment> files = images.stream()
+                    .map(image -> new GatewayResponse.Attachment(image.url(), image.fileName(), image.description()))
+                    .toList();
+            responses.set(responses.size() - 1, responses.getLast().withAttachments(files));
         }
         send(responses);
     }

@@ -2,7 +2,9 @@ package dev.gdinizds.discordaibot.adapter.out.gemini.tools;
 
 import dev.gdinizds.discordaibot.application.port.in.ManageMemoryUseCase;
 import dev.gdinizds.discordaibot.application.port.out.MetricsPort;
+import dev.gdinizds.discordaibot.domain.model.ImageHit;
 import dev.gdinizds.discordaibot.domain.model.MemorySaveResult;
+import dev.gdinizds.discordaibot.domain.model.OutboundImage;
 import dev.gdinizds.discordaibot.domain.model.SearchHit;
 import dev.gdinizds.discordaibot.domain.model.TokenUsage;
 import dev.gdinizds.discordaibot.domain.model.TriggerType;
@@ -93,6 +95,66 @@ class ToolsTest {
         tool.wikipedia("Recife", "../etc");
 
         assertThat(langs).containsExactly("pt", "pt");
+    }
+
+    @Test
+    void imageSearchSkipsCandidatesThatFailAndStopsAtTheRequestedCount() {
+        var hits = List.of(hit("quebrada"), hit("boa 1"), hit("boa 2"), hit("boa 3"));
+        var limits = new ArrayList<Integer>();
+        var tool = new ImageSearchTool((q, n) -> {
+            limits.add(n);
+            return hits;
+        }, (g, c, i, h) -> {
+            if (h.title().equals("quebrada")) throw new IllegalStateException("404");
+            return new OutboundImage("http://garage/b/" + g + "/" + c + "/imagem-" + i + ".png", "imagem-" + i + ".png", h.title());
+        }, support, Duration.ofSeconds(2), "g1", "c1", 4);
+
+        String result = tool.imageSearch("capivara", 2);
+
+        assertThat(limits).containsExactly(6);
+        assertThat(result).startsWith("Anexei 2 imagens").contains("boa 1", "boa 2").doesNotContain("boa 3");
+        assertThat(tool.attached()).extracting(OutboundImage::url)
+                .containsExactly("http://garage/b/g1/c1/imagem-1.png", "http://garage/b/g1/c1/imagem-2.png");
+        assertThat(toolCalls).containsExactly("image_search:true");
+    }
+
+    @Test
+    void imageSearchRespectsTheLimitPerAnswerAcrossCalls() {
+        var tool = new ImageSearchTool((q, n) -> List.of(hit("a"), hit("b"), hit("c")),
+                (g, c, i, h) -> new OutboundImage("u" + i, "imagem-" + i + ".png", h.title()),
+                support, Duration.ofSeconds(2), "g1", "c1", 2);
+
+        tool.imageSearch("x", 4);
+        String second = tool.imageSearch("y", 1);
+
+        assertThat(tool.attached()).hasSize(2);
+        assertThat(second).isEqualTo("Limite de 2 imagens por resposta atingido.");
+    }
+
+    @Test
+    void imageSearchReportsWhenNothingCouldBeSent() {
+        var empty = new ImageSearchTool((q, n) -> List.of(),
+                (g, c, i, h) -> { throw new AssertionError(); }, support, Duration.ofSeconds(2), "g1", "c1", 4);
+        var failing = new ImageSearchTool((q, n) -> List.of(hit("a")),
+                (g, c, i, h) -> { throw new IllegalStateException("403"); }, support, Duration.ofSeconds(2), "g1", "c1", 4);
+
+        assertThat(empty.imageSearch("x", 1)).isEqualTo("Nenhuma imagem encontrada para essa busca.");
+        assertThat(failing.imageSearch("x", 1)).startsWith("Encontrei imagens, mas nenhuma pôde ser baixada");
+        assertThat(failing.attached()).isEmpty();
+    }
+
+    @Test
+    void imageSearchFailureBecomesUnavailableText() {
+        var tool = new ImageSearchTool((q, n) -> { throw new IllegalStateException("searxng down"); },
+                (g, c, i, h) -> null, support, Duration.ofSeconds(2), "g1", "c1", 4);
+
+        assertThat(tool.imageSearch("x", 1)).isEqualTo("Busca de imagens indisponível no momento.");
+        assertThat(toolCalls).containsExactly("image_search:false");
+    }
+
+    private static ImageHit hit(String title) {
+        return new ImageHit(title, "https://img.example/" + title.replace(' ', '-') + ".png",
+                "https://example.org/" + title.replace(' ', '-'), "Exemplo", "640 x 480");
     }
 
     @Test
