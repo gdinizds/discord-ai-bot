@@ -1,6 +1,3 @@
-# Test image for Testcontainers. Mirrors production: the CloudNativePG cluster
-# postgresql-cnpg runs PostgreSQL 18 with pg_cron, pg_partman and pgvector
-# (image ghcr.io/gdinizds/postgresql-cnpg:18).
 FROM postgres:18
 
 RUN apt-get update \
