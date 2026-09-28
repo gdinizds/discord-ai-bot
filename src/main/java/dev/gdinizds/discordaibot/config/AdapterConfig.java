@@ -4,6 +4,7 @@ import dev.gdinizds.discordaibot.adapter.in.kafka.InboundEventConsumer;
 import dev.gdinizds.discordaibot.adapter.in.kafka.InboundEventMapper;
 import dev.gdinizds.discordaibot.adapter.in.kafka.TriggerResolver;
 import dev.gdinizds.discordaibot.adapter.out.gemini.AssistantFactory;
+import dev.gdinizds.discordaibot.adapter.out.gemini.FailoverLlmAdapter;
 import dev.gdinizds.discordaibot.adapter.out.gemini.GeminiEmbeddingAdapter;
 import dev.gdinizds.discordaibot.adapter.out.gemini.GeminiLlmAdapter;
 import dev.gdinizds.discordaibot.adapter.out.gemini.ResilientChatModel;
@@ -19,10 +20,12 @@ import dev.gdinizds.discordaibot.adapter.out.s3.GarageAttachmentFetcher;
 import dev.gdinizds.discordaibot.application.port.in.HandleConversationUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleMemoryCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.ManageMemoryUseCase;
+import dev.gdinizds.discordaibot.application.port.out.LlmPort;
 import dev.gdinizds.discordaibot.application.port.out.MetricsPort;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import io.github.resilience4j.bulkhead.Bulkhead;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -122,8 +125,13 @@ public class AdapterConfig {
     }
 
     @Bean
-    public GeminiLlmAdapter llmAdapter(AssistantFactory assistants) {
-        return new GeminiLlmAdapter(assistants);
+    public LlmPort llmAdapter(AssistantFactory assistants, ObjectProvider<FallbackChatModel> fallback, Resilience r) {
+        LlmPort primary = new GeminiLlmAdapter(assistants);
+        FallbackChatModel secondary = fallback.getIfAvailable();
+        if (secondary == null) return primary;
+        LlmPort backup = new GeminiLlmAdapter(assistants.withChatModel(
+                new ResilientChatModel(secondary.model(), r, ResilientChatModel.FALLBACK_INSTANCE)));
+        return new FailoverLlmAdapter(primary, backup, secondary.name());
     }
 }
 

@@ -4,6 +4,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -14,10 +16,21 @@ public class GeminiConfig {
 
     @Bean
     public ChatModel geminiChatModel(AiBotProperties properties) {
+        return chatModel(properties, properties.gemini().chatModel());
+    }
+
+    @Bean
+    @ConditionalOnExpression("'${ai-bot.gemini.fallback-chat-model:}' != ''")
+    public FallbackChatModel geminiFallbackChatModel(AiBotProperties properties,
+                                                     @Value("${ai-bot.gemini.fallback-chat-model}") String name) {
+        return new FallbackChatModel(name, chatModel(properties, name));
+    }
+
+    private static ChatModel chatModel(AiBotProperties properties, String name) {
         var gemini = properties.gemini();
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(gemini.requireApiKey())
-                .modelName(gemini.chatModel())
+                .modelName(name)
                 .temperature(gemini.temperature())
                 .maxOutputTokens(gemini.maxOutputTokens())
                 .returnThinking(true)

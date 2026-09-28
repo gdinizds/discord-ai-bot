@@ -47,6 +47,21 @@ public class AssistantFactory {
         this.maxSequentialToolInvocations = properties.gemini().maxSequentialToolInvocations();
     }
 
+    private AssistantFactory(AssistantFactory base, ChatModel chatModel) {
+        this.chatModel = chatModel;
+        this.webSearch = base.webSearch;
+        this.weather = base.weather;
+        this.encyclopedia = base.encyclopedia;
+        this.memories = base.memories;
+        this.toolSupport = base.toolSupport;
+        this.tools = base.tools;
+        this.maxSequentialToolInvocations = base.maxSequentialToolInvocations;
+    }
+
+    public AssistantFactory withChatModel(ChatModel other) {
+        return new AssistantFactory(this, other);
+    }
+
     public Assistant create(ConversationKey key, String correlationId, ChatMemory memory) {
         return AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
