@@ -98,6 +98,18 @@ class UsageServiceTest {
     }
 
     @Test
+    void idleUsersStopBeingTrackedForBurstLimits() {
+        var service = service(true, Set.of());
+        for (int i = 0; i < 1100; i++) service.check("user-" + i);
+        assertThat(service.trackedUsers()).isEqualTo(1100);
+
+        clock.advance(Duration.ofSeconds(61));
+        service.check("42");
+
+        assertThat(service.trackedUsers()).isEqualTo(1);
+    }
+
+    @Test
     void eachDecisionHasItsOwnMessage() {
         var service = service(true, Set.of());
 

@@ -63,15 +63,16 @@ public class ImageSearchTool {
 
     private String attach(String query, int wanted) {
         List<ImageHit> candidates = search.searchImages(query, Math.min(wanted * CANDIDATES_PER_IMAGE, MAX_CANDIDATES));
+        int room = Math.min(wanted, maxImages - attached.size());
         List<ImageHit> sent = new ArrayList<>();
-        for (ImageHit hit : candidates) {
-            if (sent.size() >= wanted || attached.size() >= maxImages) break;
-            try {
-                attached.add(store.store(guildId, correlationId, attached.size() + 1, hit));
-                sent.add(hit);
-            } catch (RuntimeException e) {
-                log.debug("Image candidate skipped: {}", e.getMessage());
+        if (room > 0 && !candidates.isEmpty()) {
+            for (ImageStorePort.Stored stored : store.storeFirst(guildId, correlationId, attached.size() + 1, candidates, room)) {
+                attached.add(stored.image());
+                sent.add(stored.hit());
             }
+        }
+        if (sent.size() < Math.min(room, candidates.size())) {
+            log.debug("Only {} of {} image candidate(s) could be stored", sent.size(), candidates.size());
         }
         if (sent.isEmpty()) {
             return candidates.isEmpty()

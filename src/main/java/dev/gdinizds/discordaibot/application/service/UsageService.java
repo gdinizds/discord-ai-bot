@@ -27,6 +27,7 @@ public class UsageService {
 
     private static final Logger log = LoggerFactory.getLogger(UsageService.class);
     private static final Duration BURST_WINDOW = Duration.ofMinutes(1);
+    private static final int BURST_TRACKING_SWEEP_THRESHOLD = 1024;
 
     private final UsagePort usage;
     private final UsageSettings settings;
@@ -114,13 +115,29 @@ public class UsageService {
     private boolean takeBurstSlot(String userId) {
         Instant now = clock.instant();
         Instant windowStart = now.minus(BURST_WINDOW);
-        Deque<Instant> times = recent.computeIfAbsent(userId, id -> new ArrayDeque<>());
-        synchronized (times) {
-            while (!times.isEmpty() && !times.peekFirst().isAfter(windowStart)) times.pollFirst();
-            if (times.size() >= settings.perUserPerMinute()) return false;
-            times.addLast(now);
-            return true;
-        }
+        boolean[] allowed = {false};
+        recent.compute(userId, (id, times) -> {
+            Deque<Instant> window = times == null ? new ArrayDeque<>() : times;
+            while (!window.isEmpty() && !window.peekFirst().isAfter(windowStart)) window.pollFirst();
+            if (window.size() < settings.perUserPerMinute()) {
+                window.addLast(now);
+                allowed[0] = true;
+            }
+            return window;
+        });
+        if (recent.size() > BURST_TRACKING_SWEEP_THRESHOLD) sweepIdleUsers(windowStart);
+        return allowed[0];
+    }
+
+    private void sweepIdleUsers(Instant windowStart) {
+        recent.forEach((id, times) -> recent.computeIfPresent(id, (key, window) -> {
+            while (!window.isEmpty() && !window.peekFirst().isAfter(windowStart)) window.pollFirst();
+            return window.isEmpty() ? null : window;
+        }));
+    }
+
+    int trackedUsers() {
+        return recent.size();
     }
 
     private LocalDate today() {

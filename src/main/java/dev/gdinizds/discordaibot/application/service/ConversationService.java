@@ -108,7 +108,6 @@ public class ConversationService implements HandleConversationUseCase {
         }
 
         AiAnswer answer = generateWithinBudget(request);
-        if (!answer.fallback()) usage.record(request.key().userId(), answer);
         List<String> chunks = answer.fallback()
                 ? List.of(settings.fallbackText())
                 : splitter.split(answer.text());
@@ -204,6 +203,7 @@ public class ConversationService implements HandleConversationUseCase {
         long llmStarted = System.nanoTime();
         AiAnswer answer = llm.answer(prompt);
         metrics.latency(Stage.LLM, Duration.ofNanos(System.nanoTime() - llmStarted));
+        if (!answer.fallback()) usage.record(request.key().userId(), answer);
         return answer;
     }
 

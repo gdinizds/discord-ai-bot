@@ -8,16 +8,20 @@ import io.github.resilience4j.bulkhead.Bulkhead;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class InboundEventConsumer {
+public class InboundEventConsumer implements DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(InboundEventConsumer.class);
 
@@ -29,6 +33,9 @@ public class InboundEventConsumer {
     private final HandleLimitsCommandUseCase limitsCommands;
     private final Bulkhead bulkhead;
     private final ExecutorService executor;
+    private final AtomicInteger inFlight = new AtomicInteger();
+    private final Object drained = new Object();
+    private Duration drainTimeout = Duration.ofSeconds(95);
 
     public InboundEventConsumer(ObjectMapper objectMapper, InboundEventMapper mapper,
                                 TriggerResolver triggerResolver, HandleConversationUseCase conversations,
@@ -53,13 +60,13 @@ public class InboundEventConsumer {
         } else if ("ia-memoria".equals(commandName)) {
             parse(payload).ifPresent(event -> {
                 var command = mapper.toMemoryCommand(event);
-                executor.execute(() -> withMdc(command.correlationId(), command.guildId(), "MEMORY",
+                submit(() -> withMdc(command.correlationId(), command.guildId(), "MEMORY",
                         () -> memoryCommands.handle(command)));
             });
         } else if ("ia-limites".equals(commandName)) {
             parse(payload).ifPresent(event -> {
                 var command = mapper.toLimitsCommand(event);
-                executor.execute(() -> withMdc(command.correlationId(), command.guildId(), "LIMITS",
+                submit(() -> withMdc(command.correlationId(), command.guildId(), "LIMITS",
                         () -> limitsCommands.handle(command)));
             });
         }
@@ -81,11 +88,11 @@ public class InboundEventConsumer {
 
     private void dispatch(ConversationRequest request) {
         if (!bulkhead.tryAcquirePermission()) {
-            executor.execute(() -> withMdc(request, () -> conversations.rejectBusy(request)));
+            submit(() -> withMdc(request, () -> conversations.rejectBusy(request)));
             return;
         }
         try {
-            executor.execute(() -> {
+            submit(() -> {
                 try {
                     withMdc(request, () -> conversations.handle(request));
                 } finally {
@@ -95,6 +102,59 @@ public class InboundEventConsumer {
         } catch (RuntimeException e) {
             bulkhead.onComplete();
             throw e;
+        }
+    }
+
+    public void setDrainTimeout(Duration drainTimeout) {
+        this.drainTimeout = drainTimeout;
+    }
+
+    int inFlight() {
+        return inFlight.get();
+    }
+
+    @Override
+    public void destroy() {
+        long deadline = System.nanoTime() + drainTimeout.toNanos();
+        synchronized (drained) {
+            while (inFlight.get() > 0) {
+                long remainingMs = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
+                if (remainingMs <= 0) {
+                    log.warn("Shutting down with {} conversation(s) still in progress", inFlight.get());
+                    return;
+                }
+                log.info("Waiting for {} conversation(s) to finish before shutdown", inFlight.get());
+                try {
+                    drained.wait(remainingMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+    }
+
+    private void submit(Runnable task) {
+        inFlight.incrementAndGet();
+        try {
+            executor.execute(() -> {
+                try {
+                    task.run();
+                } finally {
+                    release();
+                }
+            });
+        } catch (RuntimeException e) {
+            release();
+            throw e;
+        }
+    }
+
+    private void release() {
+        if (inFlight.decrementAndGet() == 0) {
+            synchronized (drained) {
+                drained.notifyAll();
+            }
         }
     }
 
