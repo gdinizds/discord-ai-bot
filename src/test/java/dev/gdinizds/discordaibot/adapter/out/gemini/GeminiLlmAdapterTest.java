@@ -157,10 +157,12 @@ class GeminiLlmAdapterTest {
                 new AiBotProperties.Gemini("", "gemini-test", "gemini-embedding-001", 768, 0.7, 2048, 5,
                         Duration.ofSeconds(75), Duration.ofSeconds(5)),
                 new AiBotProperties.Tools("http://searxng", "http://geo", "http://forecast", "http://{lang}.wiki",
-                        "ua", 4000, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)),
+                        "ua", 4000, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1),
+                        Duration.ofSeconds(1), 12000, 2_097_152, "http://awesome", Duration.ofSeconds(1),
+                        Duration.ofSeconds(60), Duration.ofSeconds(1), 8000, Duration.ofSeconds(1), Duration.ofSeconds(1)),
                 null, null, null,
                 new AiBotProperties.Images(4, Duration.ofSeconds(5), Duration.ofSeconds(1), 1_000_000, "ai-bot", "ua"),
-                null);
+                null, null, null);
         ManageMemoryUseCase memories = new ManageMemoryUseCase() {
             @Override public MemorySaveResult save(String g, String u, String c, String cat, String cid) { return MemorySaveResult.INSERTED; }
             @Override public List<UserMemory> list(String g, String u) { return List.of(); }

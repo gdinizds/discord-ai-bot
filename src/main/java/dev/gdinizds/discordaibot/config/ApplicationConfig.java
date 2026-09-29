@@ -2,14 +2,18 @@ package dev.gdinizds.discordaibot.config;
 
 import dev.gdinizds.discordaibot.application.port.in.ManageMemoryUseCase;
 import dev.gdinizds.discordaibot.application.port.out.AttachmentFetcherPort;
+import dev.gdinizds.discordaibot.application.port.out.ChannelLogPort;
 import dev.gdinizds.discordaibot.application.port.out.ConversationHistoryPort;
 import dev.gdinizds.discordaibot.application.port.out.EmbeddingPort;
 import dev.gdinizds.discordaibot.application.port.out.LlmPort;
 import dev.gdinizds.discordaibot.application.port.out.MetricsPort;
 import dev.gdinizds.discordaibot.application.port.out.ProcessedEventPort;
+import dev.gdinizds.discordaibot.application.port.out.ReminderPort;
 import dev.gdinizds.discordaibot.application.port.out.ReplyPublisherPort;
 import dev.gdinizds.discordaibot.application.port.out.SentChunkPort;
+import dev.gdinizds.discordaibot.application.port.out.UsagePort;
 import dev.gdinizds.discordaibot.application.port.out.UserMemoryPort;
+import dev.gdinizds.discordaibot.application.service.ChannelLogService;
 import dev.gdinizds.discordaibot.application.service.ContextAssembler;
 import dev.gdinizds.discordaibot.application.service.ConversationService;
 import dev.gdinizds.discordaibot.application.service.ConversationSettings;
@@ -17,10 +21,11 @@ import dev.gdinizds.discordaibot.application.service.LimitsCommandService;
 import dev.gdinizds.discordaibot.application.service.MemoryCommandService;
 import dev.gdinizds.discordaibot.application.service.MemoryService;
 import dev.gdinizds.discordaibot.application.service.MemorySettings;
+import dev.gdinizds.discordaibot.application.service.ReminderService;
+import dev.gdinizds.discordaibot.application.service.ReminderSettings;
 import dev.gdinizds.discordaibot.application.service.Sleeper;
 import dev.gdinizds.discordaibot.application.service.UsageService;
 import dev.gdinizds.discordaibot.application.service.UsageSettings;
-import dev.gdinizds.discordaibot.application.port.out.UsagePort;
 import dev.gdinizds.discordaibot.domain.service.MessageSplitter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -80,6 +85,19 @@ public class ApplicationConfig {
                 ZoneId.of(p.conversation().zone()),
                 new UsageSettings.Messages(limits.burstLimitMessage(), limits.userLimitMessage(),
                         limits.userMonthlyLimitMessage(), limits.monthlyLimitMessage())), clock);
+    }
+
+    @Bean
+    public ReminderService reminderService(ReminderPort reminders, ReplyPublisherPort publisher, AiBotProperties p,
+                                           Clock clock) {
+        var r = p.reminders();
+        return new ReminderService(reminders, publisher, new ReminderSettings(r.minDelay(), r.maxAhead(),
+                r.maxPendingPerUser(), r.maxTextChars(), r.dispatchBatch(), ZoneId.of(p.conversation().zone())), clock);
+    }
+
+    @Bean
+    public ChannelLogService channelLogService(ChannelLogPort channelLog, AiBotProperties p) {
+        return new ChannelLogService(channelLog, p.channelLog().enabled(), p.channelLog().maxContentChars());
     }
 
     @Bean

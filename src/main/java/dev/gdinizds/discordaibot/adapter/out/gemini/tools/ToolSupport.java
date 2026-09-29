@@ -28,11 +28,15 @@ public class ToolSupport {
     }
 
     public String run(String tool, Duration timeout, String unavailable, Supplier<String> call) {
+        return run(tool, timeout, unavailable, maxResultChars, call);
+    }
+
+    public String run(String tool, Duration timeout, String unavailable, int maxChars, Supplier<String> call) {
         Future<String> future = executor.submit(Mdc.propagate(call::get));
         try {
             String result = future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
             metrics.toolCall(tool, true);
-            return truncate(result == null ? "" : result);
+            return truncate(result == null ? "" : result, maxChars);
         } catch (TimeoutException e) {
             future.cancel(true);
             log.warn("Tool {} timed out after {}", tool, timeout);
@@ -48,8 +52,12 @@ public class ToolSupport {
     }
 
     String truncate(String text) {
-        if (text.length() <= maxResultChars) return text;
-        int end = maxResultChars - TRUNCATED.length();
+        return truncate(text, maxResultChars);
+    }
+
+    static String truncate(String text, int maxChars) {
+        if (text.length() <= maxChars) return text;
+        int end = maxChars - TRUNCATED.length();
         if (Character.isHighSurrogate(text.charAt(end - 1))) end--;
         return text.substring(0, end) + TRUNCATED;
     }

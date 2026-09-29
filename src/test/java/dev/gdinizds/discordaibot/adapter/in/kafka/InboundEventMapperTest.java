@@ -128,5 +128,12 @@ class InboundEventMapperTest {
     private InboundEvent parse(String fixture) {
         return objectMapper.readValue(event(fixture), InboundEvent.class);
     }
-}
 
+    @Test
+    void channelMessagesUseTheDiscordTimestampOfTheMessageId() {
+        assertThat(InboundEventMapper.snowflakeInstant("1234567890123456789"))
+                .isEqualTo(Instant.ofEpochMilli(1_714_414_322_167L));
+        assertThat(InboundEventMapper.snowflakeInstant("não")).isNull();
+        assertThat(InboundEventMapper.snowflakeInstant(null)).isNull();
+    }
+}

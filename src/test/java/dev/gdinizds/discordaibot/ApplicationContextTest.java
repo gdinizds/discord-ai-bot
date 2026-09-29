@@ -6,6 +6,7 @@ import dev.gdinizds.discordaibot.domain.model.ConversationKey;
 import dev.gdinizds.discordaibot.domain.model.LlmPrompt;
 import dev.gdinizds.discordaibot.support.ScriptedChatModel;
 import dev.gdinizds.discordaibot.support.TestLlmConfig;
+import dev.gdinizds.discordaibot.application.port.out.PageReaderPort;
 import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.retry.RetryRegistry;
@@ -68,6 +69,21 @@ class ApplicationContextTest {
         assertThat(retries.find("gemini-chat")).isPresent();
         assertThat(bulkheads.find("conversation")).hasValueSatisfying(b ->
                 assertThat(b.getBulkheadConfig().getMaxConcurrentCalls()).isEqualTo(32));
+        assertThat(circuitBreakers.find("awesomeapi")).isPresent();
+        assertThat(circuitBreakers.find("web-page")).hasValueSatisfying(cb -> assertThat(cb.getCircuitBreakerConfig()
+                .getIgnoreExceptionPredicate().test(new PageReaderPort.PageRejectedException("x"))).isTrue());
+        assertThat(timeLimiters.find("web-page")).hasValueSatisfying(tl ->
+                assertThat(tl.getTimeLimiterConfig().getTimeoutDuration()).isEqualTo(Duration.ofSeconds(11)));
+    }
+
+    @Test
+    void newToolSettingsBindWithDefaults() {
+        assertThat(properties.channelLog().enabled()).isTrue();
+        assertThat(properties.channelLog().retention()).isEqualTo(Duration.ofHours(48));
+        assertThat(properties.reminders().maxPendingPerUser()).isEqualTo(10);
+        assertThat(properties.reminders().maxAhead()).isEqualTo(Duration.ofDays(30));
+        assertThat(properties.tools().exchangeRateUrl()).isEqualTo("https://economia.awesomeapi.com.br");
+        assertThat(properties.tools().readUrlMaxChars()).isEqualTo(12000);
     }
 
     @Test

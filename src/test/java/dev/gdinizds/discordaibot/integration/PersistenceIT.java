@@ -1,13 +1,18 @@
 package dev.gdinizds.discordaibot.integration;
 
+import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcChannelLog;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcProcessedEvents;
+import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcReminders;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcSentChunks;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUsage;
 import dev.gdinizds.discordaibot.application.port.out.UsagePort;
 import dev.gdinizds.discordaibot.domain.model.TokenUsage;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUserMemory;
 import dev.gdinizds.discordaibot.application.port.out.UserMemoryPort.NewMemory;
+import dev.gdinizds.discordaibot.application.port.out.ReminderPort;
+import dev.gdinizds.discordaibot.domain.model.ChannelMessage;
 import dev.gdinizds.discordaibot.domain.model.ConversationKey;
+import dev.gdinizds.discordaibot.domain.model.Reminder;
 import dev.gdinizds.discordaibot.domain.model.ScoredMemory;
 import dev.gdinizds.discordaibot.domain.service.ContentHasher;
 import dev.gdinizds.discordaibot.support.DeterministicEmbeddingModel;
@@ -27,12 +32,14 @@ class PersistenceIT extends IntegrationTest {
     @Autowired JdbcSentChunks sentChunks;
     @Autowired JdbcProcessedEvents processedEvents;
     @Autowired JdbcUsage usage;
+    @Autowired JdbcChannelLog channelLog;
+    @Autowired JdbcReminders reminders;
 
     @Test
     void flywayAppliesAllMigrationsAndPartmanKeepsEightDays() {
         int applied = jdbc.sql("SELECT count(*) FROM ai_bot.flyway_schema_history WHERE success AND version IS NOT NULL")
                 .query(Integer.class).single();
-        assertThat(applied).isEqualTo(6);
+        assertThat(applied).isEqualTo(8);
 
         List<String> retention = jdbc.sql("""
                         SELECT retention FROM partman.part_config
@@ -113,6 +120,60 @@ class PersistenceIT extends IntegrationTest {
         String id = UUID.randomUUID().toString();
         assertThat(processedEvents.tryAcquire(id)).isTrue();
         assertThat(processedEvents.tryAcquire(id)).isFalse();
+    }
+
+    @Test
+    void channelLogKeepsTheLatestMessagesOfOneChannelInOrder() {
+        var base = java.time.Instant.now().minusSeconds(60);
+        for (int i = 0; i < 5; i++) {
+            channelLog.append(new ChannelMessage("1", "777", Long.toString(9_000 + i), "3", "ana",
+                    "mensagem " + i, base.plusSeconds(i)));
+        }
+        channelLog.append(new ChannelMessage("1", "777", "9004", "3", "ana", "duplicada", base.plusSeconds(4)));
+        channelLog.append(new ChannelMessage("1", "778", "9100", "3", "ana", "outro canal", base));
+        channelLog.append(new ChannelMessage("1", "777", "9200", "3", "ana", "antiga", base.minus(java.time.Duration.ofDays(3))));
+
+        var recent = channelLog.recent("777", base.minus(java.time.Duration.ofDays(5)), 3);
+
+        assertThat(recent).extracting(ChannelMessage::content).containsExactly("mensagem 2", "mensagem 3", "mensagem 4");
+    }
+
+    @Test
+    void remindersAreClaimedOnceEvenWithConcurrentDispatchers() throws Exception {
+        var due = java.time.Instant.now().minusSeconds(5);
+        for (int i = 0; i < 20; i++) {
+            reminders.create(new ReminderPort.NewReminder("1", "888", "3", "lembrete " + i, due, UUID.randomUUID().toString()));
+        }
+        reminders.create(new ReminderPort.NewReminder("1", "888", "3", "futuro",
+                java.time.Instant.now().plusSeconds(3600), null));
+
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(4);
+        try {
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<List<Reminder>>>();
+            for (int i = 0; i < 4; i++) futures.add(pool.submit(() -> reminders.claimDue(java.time.Instant.now(), 50)));
+            var claimed = new java.util.ArrayList<Long>();
+            for (var f : futures) f.get().stream().filter(r -> r.channelId().equals("888")).forEach(r -> claimed.add(r.id()));
+
+            assertThat(claimed).hasSize(20).doesNotHaveDuplicates();
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(reminders.pending("1", "3")).extracting(Reminder::content).containsExactly("futuro");
+    }
+
+    @Test
+    void remindersCanBeCancelledOnlyByTheirOwnerAndReleasedForRetry() {
+        long mine = reminders.create(new ReminderPort.NewReminder("1", "889", "40", "meu", java.time.Instant.now().plusSeconds(600), null));
+
+        assertThat(reminders.cancel("1", "41", mine)).isFalse();
+        assertThat(reminders.countPending("1", "40")).isEqualTo(1);
+        assertThat(reminders.cancel("1", "40", mine)).isTrue();
+        assertThat(reminders.countPending("1", "40")).isZero();
+
+        long retry = reminders.create(new ReminderPort.NewReminder("1", "889", "42", "retry", java.time.Instant.now().minusSeconds(1), null));
+        assertThat(reminders.claimDue(java.time.Instant.now(), 10)).extracting(Reminder::id).contains(retry);
+        reminders.release(retry);
+        assertThat(reminders.pending("1", "42")).extracting(Reminder::id).containsExactly(retry);
     }
 
     private void insertMemory(String guild, String user, String content) {

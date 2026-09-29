@@ -143,6 +143,12 @@ resilience4j:
       open-meteo: { base-config: http-tool, wait-duration-in-open-state: 60s }
       wikipedia:  { base-config: http-tool, wait-duration-in-open-state: 60s }
       garage:     { base-config: http-tool, wait-duration-in-open-state: 60s }
+      awesomeapi: { base-config: http-tool, wait-duration-in-open-state: 60s }
+      web-page:
+        base-config: http-tool
+        wait-duration-in-open-state: 30s
+        ignore-exceptions:
+          - dev.gdinizds.discordaibot.application.port.out.PageReaderPort$PageRejectedException
       database:
         sliding-window-size: 20
         failure-rate-threshold: 50
@@ -156,6 +162,8 @@ resilience4j:
       open-meteo:       { timeout-duration: 4s,  cancel-running-future: true }
       wikipedia:        { timeout-duration: 4s,  cancel-running-future: true }
       garage:           { timeout-duration: 10s, cancel-running-future: true }
+      awesomeapi:       { timeout-duration: 5s,  cancel-running-future: true }
+      web-page:         { timeout-duration: 11s, cancel-running-future: true }
   retry:
     instances:
       gemini-chat:

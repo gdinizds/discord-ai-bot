@@ -25,6 +25,7 @@ ext {
     langchain4jVersion  = '1.20.1'
     pgvectorVersion     = '0.1.6'
     archunitVersion     = '1.4.1'
+    jsoupVersion        = '1.21.1'
     wiremockVersion     = '3.13.1'
 }
 
@@ -48,6 +49,7 @@ dependencies {
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
     implementation "com.pgvector:pgvector:${pgvectorVersion}"
+    implementation "org.jsoup:jsoup:${jsoupVersion}"
 
     implementation "dev.langchain4j:langchain4j:${langchain4jVersion}"
     implementation "dev.langchain4j:langchain4j-google-ai-gemini:${langchain4jVersion}"

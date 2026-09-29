@@ -1,5 +1,6 @@
 package dev.gdinizds.discordaibot.adapter.in.kafka;
 
+import dev.gdinizds.discordaibot.domain.model.ChannelMessage;
 import dev.gdinizds.discordaibot.domain.model.ConversationKey;
 import dev.gdinizds.discordaibot.domain.model.ConversationRequest;
 import dev.gdinizds.discordaibot.domain.model.InputAttachment;
@@ -15,10 +16,13 @@ import tools.jackson.databind.node.MissingNode;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 public class InboundEventMapper {
+
+    static final long DISCORD_EPOCH_MILLIS = 1_420_070_400_000L;
 
     private final String botUserId;
     private final Clock clock;
@@ -52,6 +56,24 @@ public class InboundEventMapper {
                 ? MentionParser.stripMention(content, botUserId)
                 : content;
         return request(event, trigger, prompt, referencedContent(raw), attachments(event), channelTarget(event));
+    }
+
+    public ChannelMessage toChannelMessage(InboundEvent event) {
+        String username = event.user() == null ? null : event.user().username();
+        Instant sentAt = snowflakeInstant(event.messageId());
+        return new ChannelMessage(event.guildId(), event.channelId(), event.messageId(), event.userId(), username,
+                text(raw(event).path("content")), sentAt == null ? clock.instant() : sentAt);
+    }
+
+    static Instant snowflakeInstant(String snowflake) {
+        if (snowflake == null) return null;
+        try {
+            long id = Long.parseUnsignedLong(snowflake.strip());
+            if (id <= 0) return null;
+            return Instant.ofEpochMilli((id >>> 22) + DISCORD_EPOCH_MILLIS);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     public LimitsCommand toLimitsCommand(InboundEvent event) {

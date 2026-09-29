@@ -72,7 +72,7 @@ public class SafeImageDownloader {
         throw new ImageRejectedException("redirecionamentos demais");
     }
 
-    static boolean isPublicAddress(InetAddress address) {
+    public static boolean isPublicAddress(InetAddress address) {
         if (address.isAnyLocalAddress() || address.isLoopbackAddress() || address.isLinkLocalAddress()
                 || address.isSiteLocalAddress() || address.isMulticastAddress()) {
             return false;
