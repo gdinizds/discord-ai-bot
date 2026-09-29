@@ -3,6 +3,7 @@ package dev.gdinizds.discordaibot.adapter.in.kafka;
 import dev.gdinizds.discordaibot.application.port.in.HandleConversationUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleLimitsCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleMemoryCommandUseCase;
+import dev.gdinizds.discordaibot.application.port.in.RecordChannelMessageUseCase;
 import dev.gdinizds.discordaibot.domain.model.ConversationRequest;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ public class InboundEventConsumer implements DisposableBean {
     private final HandleConversationUseCase conversations;
     private final HandleMemoryCommandUseCase memoryCommands;
     private final HandleLimitsCommandUseCase limitsCommands;
+    private final RecordChannelMessageUseCase channelLog;
     private final Bulkhead bulkhead;
     private final ExecutorService executor;
     private final AtomicInteger inFlight = new AtomicInteger();
@@ -40,14 +42,15 @@ public class InboundEventConsumer implements DisposableBean {
     public InboundEventConsumer(ObjectMapper objectMapper, InboundEventMapper mapper,
                                 TriggerResolver triggerResolver, HandleConversationUseCase conversations,
                                 HandleMemoryCommandUseCase memoryCommands,
-                                HandleLimitsCommandUseCase limitsCommands, Bulkhead bulkhead,
-                                @Qualifier("conversationExecutor") ExecutorService executor) {
+                                HandleLimitsCommandUseCase limitsCommands, RecordChannelMessageUseCase channelLog,
+                                Bulkhead bulkhead, @Qualifier("conversationExecutor") ExecutorService executor) {
         this.objectMapper = objectMapper;
         this.mapper = mapper;
         this.triggerResolver = triggerResolver;
         this.conversations = conversations;
         this.memoryCommands = memoryCommands;
         this.limitsCommands = limitsCommands;
+        this.channelLog = channelLog;
         this.bulkhead = bulkhead;
         this.executor = executor;
     }
@@ -81,9 +84,19 @@ public class InboundEventConsumer implements DisposableBean {
 
     @KafkaListener(topics = "${ai-bot.topics.inbound-messages}", containerFactory = "kafkaListenerContainerFactory")
     public void onMessageCreated(@Payload String payload) {
+        Optional<InboundEvent> parsed = parse(payload);
+        parsed.ifPresent(this::record);
         if (!triggerResolver.mayConcernBot(payload)) return;
-        parse(payload).ifPresent(event -> triggerResolver.resolve(event)
+        parsed.ifPresent(event -> triggerResolver.resolve(event)
                 .ifPresent(trigger -> dispatch(mapper.fromMessage(event, trigger))));
+    }
+
+    private void record(InboundEvent event) {
+        try {
+            channelLog.record(mapper.toChannelMessage(event));
+        } catch (RuntimeException e) {
+            log.debug("Channel message not recorded: {}", e.toString());
+        }
     }
 
     private void dispatch(ConversationRequest request) {

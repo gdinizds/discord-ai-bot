@@ -18,6 +18,9 @@ ai-bot:
     searxng-url: http://localhost:1
   limits:
     per-user-per-minute: 100000
+  reminders:
+    dispatch-interval-ms: 3600000
+    dispatch-initial-delay-ms: 3600000
   s3:
     endpoint: http://localhost:1
     bucket: discord-gateway-attachments

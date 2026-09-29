@@ -27,7 +27,9 @@ public record AiBotProperties(
         @Valid @NotNull @DefaultValue Conversation conversation,
         @Valid @NotNull @DefaultValue Messages messages,
         @Valid @NotNull @DefaultValue Images images,
-        @Valid @NotNull @DefaultValue Limits limits) {
+        @Valid @NotNull @DefaultValue Limits limits,
+        @Valid @NotNull @DefaultValue ChannelLog channelLog,
+        @Valid @NotNull @DefaultValue Reminders reminders) {
 
     public record Discord(@NotBlank String botUserId) {}
 
@@ -90,7 +92,30 @@ public record AiBotProperties(
             @DefaultValue("5s") Duration searxngTimeout,
             @DefaultValue("4s") Duration openMeteoTimeout,
             @DefaultValue("4s") Duration wikipediaTimeout,
-            @DefaultValue("5s") Duration saveMemoryTimeout) {}
+            @DefaultValue("5s") Duration saveMemoryTimeout,
+            @DefaultValue("12s") Duration readUrlTimeout,
+            @DefaultValue("12000") @Positive int readUrlMaxChars,
+            @DefaultValue("2097152") @Positive long readUrlMaxBytes,
+            @DefaultValue("https://economia.awesomeapi.com.br") String exchangeRateUrl,
+            @DefaultValue("5s") Duration exchangeRateTimeout,
+            @DefaultValue("60s") Duration exchangeRateCacheTtl,
+            @DefaultValue("3s") Duration channelContextTimeout,
+            @DefaultValue("8000") @Positive int channelContextMaxChars,
+            @DefaultValue("5s") Duration reminderTimeout,
+            @DefaultValue("1s") Duration calculatorTimeout) {}
+
+    public record ChannelLog(
+            @DefaultValue("true") boolean enabled,
+            @DefaultValue("48h") Duration retention,
+            @DefaultValue("1000") @Positive int maxContentChars) {}
+
+    public record Reminders(
+            @DefaultValue("true") boolean enabled,
+            @DefaultValue("1m") Duration minDelay,
+            @DefaultValue("30d") Duration maxAhead,
+            @DefaultValue("10") @Positive int maxPendingPerUser,
+            @DefaultValue("500") @Positive int maxTextChars,
+            @DefaultValue("50") @Positive int dispatchBatch) {}
 
     public record S3(
             @NotBlank String endpoint,

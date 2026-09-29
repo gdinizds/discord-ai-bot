@@ -3,27 +3,36 @@ package dev.gdinizds.discordaibot.config;
 import dev.gdinizds.discordaibot.adapter.in.kafka.InboundEventConsumer;
 import dev.gdinizds.discordaibot.adapter.in.kafka.InboundEventMapper;
 import dev.gdinizds.discordaibot.adapter.in.kafka.TriggerResolver;
+import dev.gdinizds.discordaibot.adapter.in.scheduling.ReminderDispatcher;
 import dev.gdinizds.discordaibot.adapter.out.gemini.AssistantFactory;
+import dev.gdinizds.discordaibot.adapter.out.gemini.AssistantTools;
 import dev.gdinizds.discordaibot.adapter.out.gemini.FailoverLlmAdapter;
 import dev.gdinizds.discordaibot.adapter.out.gemini.GeminiEmbeddingAdapter;
 import dev.gdinizds.discordaibot.adapter.out.gemini.GeminiLlmAdapter;
 import dev.gdinizds.discordaibot.adapter.out.gemini.ResilientChatModel;
 import dev.gdinizds.discordaibot.adapter.out.gemini.tools.ToolSupport;
+import dev.gdinizds.discordaibot.adapter.out.http.AwesomeApiClient;
 import dev.gdinizds.discordaibot.adapter.out.http.OpenMeteoClient;
 import dev.gdinizds.discordaibot.adapter.out.http.SearxngClient;
 import dev.gdinizds.discordaibot.adapter.out.http.WikipediaClient;
 import dev.gdinizds.discordaibot.adapter.out.image.GarageImageStore;
 import dev.gdinizds.discordaibot.adapter.out.image.SafeImageDownloader;
+import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcChannelLog;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcConversationHistory;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcProcessedEvents;
+import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcReminders;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcSentChunks;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUsage;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcUserMemory;
 import dev.gdinizds.discordaibot.adapter.out.s3.GarageAttachmentFetcher;
+import dev.gdinizds.discordaibot.adapter.out.web.SafePageReader;
+import dev.gdinizds.discordaibot.application.port.in.DispatchRemindersUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleConversationUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleLimitsCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleMemoryCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.ManageMemoryUseCase;
+import dev.gdinizds.discordaibot.application.port.in.ManageRemindersUseCase;
+import dev.gdinizds.discordaibot.application.port.in.RecordChannelMessageUseCase;
 import dev.gdinizds.discordaibot.application.port.out.LlmPort;
 import dev.gdinizds.discordaibot.application.port.out.MetricsPort;
 import dev.langchain4j.model.chat.ChatModel;
@@ -31,6 +40,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -40,6 +50,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
+import java.time.ZoneId;
 import java.util.concurrent.ExecutorService;
 
 @Configuration
@@ -61,11 +72,12 @@ public class AdapterConfig {
                                                      HandleConversationUseCase conversations,
                                                      HandleMemoryCommandUseCase memoryCommands,
                                                      HandleLimitsCommandUseCase limitsCommands,
+                                                     RecordChannelMessageUseCase channelLog,
                                                      @Qualifier("conversationBulkhead") Bulkhead bulkhead,
                                                      @Qualifier("conversationExecutor") ExecutorService executor,
                                                      AiBotProperties properties) {
         var consumer = new InboundEventConsumer(objectMapper, mapper, triggerResolver, conversations, memoryCommands,
-                limitsCommands, bulkhead, executor);
+                limitsCommands, channelLog, bulkhead, executor);
         consumer.setDrainTimeout(properties.conversation().timeout().plusSeconds(5));
         return consumer;
     }
@@ -88,6 +100,34 @@ public class AdapterConfig {
     @Bean
     public JdbcUsage usage(JdbcClient jdbc, Resilience r) {
         return new JdbcUsage(jdbc, r);
+    }
+
+    @Bean
+    public JdbcChannelLog channelLogStore(JdbcClient jdbc, Resilience r, AiBotProperties p, Clock clock) {
+        return new JdbcChannelLog(jdbc, r, p.channelLog().retention(), clock);
+    }
+
+    @Bean
+    public JdbcReminders reminderStore(JdbcClient jdbc, Resilience r) {
+        return new JdbcReminders(jdbc, r);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "ai-bot.reminders.enabled", havingValue = "true", matchIfMissing = true)
+    public ReminderDispatcher reminderDispatcher(DispatchRemindersUseCase reminders) {
+        return new ReminderDispatcher(reminders);
+    }
+
+    @Bean
+    public SafePageReader pageReader(Resilience r, AiBotProperties p) {
+        return new SafePageReader(p.tools().readUrlTimeout(), p.tools().readUrlMaxBytes(), p.images().userAgent(), r);
+    }
+
+    @Bean
+    public AwesomeApiClient exchangeRates(RestClient.Builder builder, ObjectMapper om, Resilience r,
+                                          AiBotProperties p, Clock clock) {
+        return new AwesomeApiClient(builder, om, r, p.tools().exchangeRateUrl(), p.tools().exchangeRateTimeout(),
+                p.tools().exchangeRateCacheTtl(), clock);
     }
 
     @Bean
@@ -142,9 +182,14 @@ public class AdapterConfig {
     public AssistantFactory assistantFactory(ChatModel chatModel, Resilience r, SearxngClient webSearch,
                                              OpenMeteoClient weather, WikipediaClient encyclopedia,
                                              ManageMemoryUseCase memories, GarageImageStore imageStore,
-                                             ToolSupport toolSupport, AiBotProperties p) {
+                                             ToolSupport toolSupport, AiBotProperties p,
+                                             SafePageReader pages, JdbcChannelLog channelLog,
+                                             AwesomeApiClient exchangeRates, ManageRemindersUseCase reminders,
+                                             Clock clock) {
+        var extras = new AssistantTools(pages, p.channelLog().enabled() ? channelLog : null, exchangeRates,
+                p.reminders().enabled() ? reminders : null, ZoneId.of(p.conversation().zone()), clock);
         return new AssistantFactory(new ResilientChatModel(chatModel, r), webSearch, weather, encyclopedia,
-                memories, webSearch, imageStore, toolSupport, p);
+                memories, webSearch, imageStore, toolSupport, p, extras);
     }
 
     @Bean

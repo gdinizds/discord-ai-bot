@@ -3,6 +3,7 @@ package dev.gdinizds.discordaibot.adapter.in.kafka;
 import dev.gdinizds.discordaibot.application.port.in.HandleConversationUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleLimitsCommandUseCase;
 import dev.gdinizds.discordaibot.application.port.in.HandleMemoryCommandUseCase;
+import dev.gdinizds.discordaibot.domain.model.ChannelMessage;
 import dev.gdinizds.discordaibot.domain.model.ConversationRequest;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadConfig;
@@ -37,6 +38,7 @@ class InboundEventConsumerTest {
     private final CountDownLatch release = new CountDownLatch(1);
     private final List<String> handled = new CopyOnWriteArrayList<>();
     private final List<String> rejected = new CopyOnWriteArrayList<>();
+    private final List<ChannelMessage> recorded = new CopyOnWriteArrayList<>();
 
     private final HandleConversationUseCase conversations = new HandleConversationUseCase() {
         @Override
@@ -118,6 +120,28 @@ class InboundEventConsumerTest {
                 .maxConcurrentCalls(maxConcurrent).maxWaitDuration(Duration.ZERO).build());
         return new InboundEventConsumer(JsonMapper.builder().build(),
                 new InboundEventMapper(BOT, Clock.systemUTC()), new TriggerResolver(BOT), conversations,
-                mock(HandleMemoryCommandUseCase.class), mock(HandleLimitsCommandUseCase.class), bulkhead, executor);
+                mock(HandleMemoryCommandUseCase.class), mock(HandleLimitsCommandUseCase.class), recorded::add,
+                bulkhead, executor);
+    }
+
+    @Test
+    void everyChannelMessageIsRecordedEvenWhenItDoesNotConcernTheBot() {
+        var consumer = consumer(4);
+
+        consumer.onMessageCreated("""
+                {"eventType":"MESSAGE_CREATED","correlationId":"0192a3b4-0000-7000-8000-000000000009",
+                 "guild":{"id":"900000000000000001"},"channelId":"800000000000000001",
+                 "user":{"id":"700000000000000002","username":"ana"},"messageId":"500000000000000001",
+                 "rawPayload":{"content":"alguém testou o Java 25?"}}
+                """);
+
+        assertThat(recorded).singleElement().satisfies(m -> {
+            assertThat(m.channelId()).isEqualTo("800000000000000001");
+            assertThat(m.messageId()).isEqualTo("500000000000000001");
+            assertThat(m.username()).isEqualTo("ana");
+            assertThat(m.content()).isEqualTo("alguém testou o Java 25?");
+        });
+        assertThat(handled).isEmpty();
+        assertThat(consumer.inFlight()).isZero();
     }
 }
