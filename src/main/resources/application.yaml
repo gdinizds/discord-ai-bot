@@ -93,7 +93,7 @@ ai-bot:
     chat-model: ${GEMINI_CHAT_MODEL:}
     embedding-model: gemini-embedding-001
     embedding-dimensions: 768
-    temperature: 0.7
+    temperature: ${GEMINI_TEMPERATURE:1.0}
     max-output-tokens: 1536
     thinking-level: low
     max-sequential-tool-invocations: 5
