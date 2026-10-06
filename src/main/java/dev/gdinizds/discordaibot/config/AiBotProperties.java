@@ -67,7 +67,7 @@ public record AiBotProperties(
             @NotBlank String chatModel,
             @DefaultValue("gemini-embedding-001") @NotBlank String embeddingModel,
             @DefaultValue("768") @Positive int embeddingDimensions,
-            @DefaultValue("0.7") double temperature,
+            @DefaultValue("1.0") double temperature,
             @DefaultValue("2048") @Positive int maxOutputTokens,
             @DefaultValue("5") @Positive int maxSequentialToolInvocations,
             @DefaultValue("75s") Duration chatTimeout,
