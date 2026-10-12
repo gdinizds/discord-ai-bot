@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '4.0.6'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.graalvm.buildtools.native' version '0.11.1'
 }
 
 group = 'dev.gdinizds'
@@ -75,6 +76,35 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+graalvmNative {
+    binaries {
+        main {
+            imageName = 'discord-ai-bot'
+            mainClass = 'dev.gdinizds.discordaibot.DiscordAiBotApplication'
+            buildArgs.addAll(
+                    '-O3',
+                    '--no-fallback',
+                    '--enable-url-protocols=http,https',
+                    '-march=compatibility',
+                    '-H:+ReportExceptionStackTraces',
+                    '-H:+UnlockExperimentalVMOptions',
+                    '--enable-monitoring=heapdump,threaddump,jfr',
+                    '--initialize-at-build-time=org.slf4j.LoggerFactory,ch.qos.logback',
+                    '-H:Preserve=package=dev.gdinizds.discordaibot.*,package=org.flywaydb.*,package=org.postgresql.*,package=com.pgvector.*,package=net.jpountz.*,package=org.springframework.cloud.consul.model.*,package=com.ecwid.consul.*,package=dev.langchain4j.*,package=org.jsoup.*,package=io.github.resilience4j.*'
+            )
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("processTestAot") || it.name.startsWith("aotTest") }.configureEach {
+    enabled = false
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.add('-parameters')
+}
+
 tasks.named('test') {
     useJUnitPlatform()
     environment 'TESTCONTAINERS_RYUK_DISABLED', 'true'
@@ -85,3 +115,4 @@ tasks.named('test') {
         showStackTraces true
     }
 }
+

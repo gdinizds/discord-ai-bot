@@ -1,0 +1,105 @@
+package dev.gdinizds.discordaibot.config;
+
+import dev.gdinizds.discordaibot.adapter.out.gemini.AssistantFactory;
+import org.flywaydb.core.extensibility.Plugin;
+import org.springframework.aot.hint.MemberCategory;
+import org.springframework.aot.hint.RuntimeHints;
+import org.springframework.aot.hint.RuntimeHintsRegistrar;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.type.classreading.MetadataReader;
+import org.springframework.core.type.classreading.SimpleMetadataReaderFactory;
+
+import java.lang.reflect.Field;
+import java.util.ServiceLoader;
+
+public class NativeRuntimeHints implements RuntimeHintsRegistrar {
+
+    @Override
+    public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+        ClassLoader cl = classLoader != null ? classLoader : Thread.currentThread().getContextClassLoader();
+
+        // LangChain4j AiServices uses JDK Dynamic Proxy for AssistantFactory.Assistant
+        hints.proxies().registerJdkProxy(AssistantFactory.Assistant.class);
+
+        // Flyway 11: ServiceLoader plugins and Jackson-cloned ConfigurationExtension classes
+        hints.reflection().registerType(Plugin.class, MemberCategory.values());
+        ServiceLoader.load(Plugin.class, cl).stream().forEach(provider -> {
+            Class<?> pluginClass = provider.type();
+            registerClassHierarchy(hints, pluginClass);
+            for (Field field : pluginClass.getDeclaredFields()) {
+                registerClassHierarchy(hints, field.getType());
+            }
+        });
+
+        // Scan packages required at runtime for reflection, LangChain4j @Tool methods, Consul KV, Flyway, pgvector, and LZ4
+        String[] packagePatterns = {
+                "classpath*:dev/gdinizds/discordaibot/**/*.class",
+                "classpath*:org/flywaydb/**/*.class",
+                "classpath*:com/pgvector/**/*.class",
+                "classpath*:dev/langchain4j/**/*.class",
+                "classpath*:org/springframework/cloud/consul/model/**/*.class",
+                "classpath*:com/ecwid/consul/**/*.class",
+                "classpath*:net/jpountz/**/*.class",
+                "classpath*:io/github/resilience4j/**/*.class"
+        };
+        for (String pattern : packagePatterns) {
+            registerClassesByPattern(hints, cl, pattern);
+        }
+
+        registerTypeIfPresent(hints, cl, "org.postgresql.Driver");
+        registerTypeIfPresent(hints, cl, "org.postgresql.PGProperty");
+        registerTypeIfPresent(hints, cl, "org.postgresql.util.PGobject");
+        registerTypeIfPresent(hints, cl, "com.zaxxer.hikari.HikariConfig");
+        registerTypeIfPresent(hints, cl, "com.zaxxer.hikari.HikariDataSource");
+
+        // Resources for Flyway, ServiceLoader, i18n, and LZ4 native library
+        hints.resources().registerPattern("db/migration/**");
+        hints.resources().registerPattern("db/migration/*");
+        hints.resources().registerPattern("db/migration/*.sql");
+        hints.resources().registerPattern("org/flywaydb/core/internal/version.txt");
+        hints.resources().registerPattern("org/flywaydb/**/*.sql");
+        hints.resources().registerPattern("META-INF/services/**");
+        hints.resources().registerPattern("**/*.i18n.properties");
+        hints.resources().registerPattern("net/jpountz/util/**");
+    }
+
+    private void registerClassesByPattern(RuntimeHints hints, ClassLoader classLoader, String pattern) {
+        try {
+            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver(classLoader);
+            SimpleMetadataReaderFactory readerFactory = new SimpleMetadataReaderFactory(classLoader);
+            for (Resource resource : resolver.getResources(pattern)) {
+                if (!resource.isReadable()) {
+                    continue;
+                }
+                try {
+                    MetadataReader reader = readerFactory.getMetadataReader(resource);
+                    String className = reader.getClassMetadata().getClassName();
+                    Class<?> clazz = Class.forName(className, false, classLoader);
+                    registerClassHierarchy(hints, clazz);
+                } catch (Throwable ignored) {
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void registerTypeIfPresent(RuntimeHints hints, ClassLoader classLoader, String className) {
+        try {
+            Class<?> clazz = Class.forName(className, false, classLoader);
+            registerClassHierarchy(hints, clazz);
+        } catch (ClassNotFoundException ignored) {
+        }
+    }
+
+    private void registerClassHierarchy(RuntimeHints hints, Class<?> clazz) {
+        Class<?> current = clazz;
+        while (current != null && current != Object.class && !current.isPrimitive()) {
+            hints.reflection().registerType(current, MemberCategory.values());
+            for (Class<?> iface : current.getInterfaces()) {
+                hints.reflection().registerType(iface, MemberCategory.values());
+            }
+            current = current.getSuperclass();
+        }
+    }
+}
