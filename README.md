@@ -1,14 +1,14 @@
 # 🤖 Discord AI Bot (HotBCT)
 
 [![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk)](https://openjdk.org/)
-[![GraalVM](https://img.shields.io/badge/GraalVM-JDK%2025-red?logo=graalvm)](https://www.graalvm.org/)
+[![Oracle GraalVM](https://img.shields.io/badge/Oracle%20GraalVM%20(GFTC)-JDK%2025-red?logo=graalvm)](https://www.graalvm.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.6-brightgreen?logo=springboot)](https://spring.io/projects/spring-boot)
 [![LangChain4j](https://img.shields.io/badge/LangChain4j-1.20.1-blue)](https://github.com/langchain4j/langchain4j)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18%20%2B%20pgvector-blue?logo=postgresql)](https://github.com/pgvector/pgvector)
 [![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka%20%2F%20Redpanda-Event--Driven-black?logo=apachekafka)](https://kafka.apache.org/)
 [![Resilience4j](https://img.shields.io/badge/Resilience4j-2.3.0-yellow)](https://resilience4j.readme.io/)
 
-O **Discord AI Bot (HotBCT)** é um serviço de inteligência artificial de alto desempenho, contextual e orientado a eventos para comunidades no Discord. Desenvolvido sobre o **Java 25 com GraalVM** e **Spring Boot 4**, ele adota os princípios de **Arquitetura Hexagonal (Ports and Adapters)** e integração assíncrona desacoplada via **Kafka / Redpanda**.
+O **Discord AI Bot (HotBCT)** é um serviço de inteligência artificial de alto desempenho, contextual e orientado a eventos para comunidades no Discord. Desenvolvido sobre o **Java 25 com Oracle GraalVM (GFTC)** e **Spring Boot 4**, ele adota os princípios de **Arquitetura Hexagonal (Ports and Adapters)** e integração assíncrona desacoplada via **Kafka / Redpanda**.
 
 O bot integra os modelos de última geração da família **Google Gemini** com recuperação de memória vetorial de longo prazo (**pgvector**), ferramentas dinâmicas de busca e utilidades com proteção corporativa **anti-SSRF**, controle orçamentário granular (**FinOps**) e resiliência com failover automático.
 
@@ -33,7 +33,7 @@ graph TD
         KP_CMD[Kafka: discord.gateway.commands]
     end
 
-    subgraph "Core: discord-ai-bot (Spring Boot 4 + GraalVM 25)"
+    subgraph "Core: discord-ai-bot (Spring Boot 4 + Oracle GraalVM 25)"
         subgraph Inbound Adapters
             IEC[InboundEventConsumer]
             CR[CommandRegistrar]
@@ -264,23 +264,31 @@ O bot conta com um sistema multicamadas de controle de custos para prevenir abus
 
 ---
 
-## ⚡ Runtime de Alta Performance com GraalVM e Java 25
+## ⚡ Runtime de Alta Performance com Oracle GraalVM (GFTC) e Java 25
 
-O serviço é empacotado em container Docker otimizado para produção sobre o **GraalVM JDK 25**:
+O serviço é empacotado em container Docker otimizado para produção sobre o **Oracle GraalVM JDK 25** sob licença **GFTC (GraalVM Free Terms and Conditions)**:
 
 ```dockerfile
 FROM container-registry.oracle.com/graalvm/jdk:25 AS runtime
 ```
 
 ### Configurações de JVM e Concorrência:
-- **Generational ZGC (`-XX:+UseZGC -XX:+ZGenerational`)**:
-  - Coletor de lixo de baixa latência com pausas de coleta garantidas abaixo de 1 milissegundo (<1ms), ideal para conversação interativa.
-- **Compilador GraalVM JIT (`-XX:+EnableJVMCI -XX:+UseJVMCICompiler`)**:
-  - Otimizações avançadas de compilação JIT de alto rendimento.
+- **Oracle GraalVM Enterprise JIT**:
+  - `-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI -XX:+UseJVMCICompiler`: Ativa o compilador GraalVM JIT no topo da JVM.
+  - `-Djdk.graal.CompilerConfiguration=enterprise`: Habilita o pipeline de otimizações enterprise da Oracle para máximo throughput computacional.
+  - `-Djdk.graal.Vectorization=true`: Vetorização SIMD automática (aceleração de embeddings vetoriais, cálculos de distância e JSON).
+  - `-Djdk.graal.UsePriorityInlining=true`: Heurística avançada de inlining por prioridade, otimizando pipelines reativos e closures do LangChain4j.
+  - `-XX:+TieredCompilation`: C1 (Tiers 1-3) para inicialização rápida do container + GraalVM JIT (Tier 4) para processamento contínuo.
+- **Generational ZGC (`-XX:+UseZGC`)**:
+  - Coletor de lixo de ultra-baixa latência nativo no JDK 25, com pausas garantidas abaixo de 1 milissegundo (<1ms), eliminando congelamentos durante streaming de IA.
+- **Compact Object Headers (`-XX:+UseCompactObjectHeaders`)**:
+  - Reduz cabeçalhos de objetos de 12/16 bytes para 8 bytes, economizando de 10% a 20% de memória heap em árvores de contexto conversacional e DTOs.
 - **Memória Otimizada para Containers (`-XX:MaxRAMPercentage=75.0` e `-XX:+AlwaysPreTouch`)**:
   - Aloca 75% da RAM do container para a heap Java, reservando 25% para off-heap, Metaspace e JIT, pré-mapeando as páginas de memória para evitar stalls de page-fault.
+- **DNS Dinâmico no Kubernetes**:
+  - `-Dnetworkaddress.cache.ttl=30`: Resolução de nomes dinâmica para serviços dependentes (Consul, Redpanda, PostgreSQL pgvector).
 - **Virtual Threads (Project Loom)**:
-  - Habilitadas globalmente (`spring.threads.virtual.enabled: true`), permitindo escalabilidade massiva de chamadas bloqueantes de I/O (REST, JDBC, S3, Kafka) sem esgotamento de threads do sistema operacional.
+  - Habilitadas globalmente (`spring.threads.virtual.enabled: true`), permitindo escalabilidade massiva de chamadas bloqueantes de I/O (REST Gemini, SearXNG, JDBC pgvector, S3, Kafka) sem esgotamento de threads do sistema operacional.
 
 ---
 
@@ -318,7 +326,7 @@ FROM container-registry.oracle.com/graalvm/jdk:25 AS runtime
 ## 🚀 Como Executar
 
 ### Pré-requisitos
-- **Java 25** (GraalVM JDK 25 recomendado)
+- **Java 25** (Oracle GraalVM JDK 25 recomendado)
 - **Docker** e **Docker Compose**
 - PostgreSQL 18 com extensão **pgvector**
 - Cluster Kafka / Redpanda acessível
