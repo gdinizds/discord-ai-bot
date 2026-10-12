@@ -1,4 +1,3 @@
-# ─── Stage 1: Build Native Executable with Oracle GraalVM Native Image 25 ───
 FROM container-registry.oracle.com/graalvm/native-image:25 AS build
 WORKDIR /workspace
 ENV LANG=C.UTF-8
@@ -11,7 +10,6 @@ RUN chmod +x gradlew && ./gradlew dependencies --no-daemon -q
 COPY src src/
 RUN ./gradlew nativeCompile --no-daemon -x test
 
-# ─── Stage 2: Ultra-lightweight Native Container ────────────────────────────
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 ENV LANG=C.UTF-8
@@ -33,4 +31,5 @@ USER app
 EXPOSE 8080
 
 ENTRYPOINT ["/app/discord-ai-bot", "-XX:MaximumHeapSizePercent=50"]
+
 

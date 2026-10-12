@@ -19,10 +19,8 @@ public class NativeRuntimeHints implements RuntimeHintsRegistrar {
     public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
         ClassLoader cl = classLoader != null ? classLoader : Thread.currentThread().getContextClassLoader();
 
-        // LangChain4j AiServices uses JDK Dynamic Proxy for AssistantFactory.Assistant
         hints.proxies().registerJdkProxy(AssistantFactory.Assistant.class);
 
-        // Flyway 11: ServiceLoader plugins and Jackson-cloned ConfigurationExtension classes
         hints.reflection().registerType(Plugin.class, MemberCategory.values());
         ServiceLoader.load(Plugin.class, cl).stream().forEach(provider -> {
             Class<?> pluginClass = provider.type();
@@ -32,16 +30,17 @@ public class NativeRuntimeHints implements RuntimeHintsRegistrar {
             }
         });
 
-        // Scan packages required at runtime for reflection, LangChain4j @Tool methods, Consul KV, Flyway, pgvector, and LZ4
         String[] packagePatterns = {
                 "classpath*:dev/gdinizds/discordaibot/**/*.class",
                 "classpath*:org/flywaydb/**/*.class",
                 "classpath*:com/pgvector/**/*.class",
-                "classpath*:dev/langchain4j/**/*.class",
+                "classpath*:dev/langchain4j/model/googleai/**/*.class",
+                "classpath*:dev/langchain4j/model/chat/**/*.class",
+                "classpath*:dev/langchain4j/agent/tool/**/*.class",
+                "classpath*:dev/langchain4j/service/**/*.class",
                 "classpath*:org/springframework/cloud/consul/model/**/*.class",
                 "classpath*:com/ecwid/consul/**/*.class",
-                "classpath*:net/jpountz/**/*.class",
-                "classpath*:io/github/resilience4j/**/*.class"
+                "classpath*:net/jpountz/**/*.class"
         };
         for (String pattern : packagePatterns) {
             registerClassesByPattern(hints, cl, pattern);
@@ -53,14 +52,14 @@ public class NativeRuntimeHints implements RuntimeHintsRegistrar {
         registerTypeIfPresent(hints, cl, "com.zaxxer.hikari.HikariConfig");
         registerTypeIfPresent(hints, cl, "com.zaxxer.hikari.HikariDataSource");
 
-        // Resources for Flyway, ServiceLoader, i18n, and LZ4 native library
         hints.resources().registerPattern("db/migration/**");
         hints.resources().registerPattern("db/migration/*");
         hints.resources().registerPattern("db/migration/*.sql");
         hints.resources().registerPattern("org/flywaydb/core/internal/version.txt");
         hints.resources().registerPattern("org/flywaydb/**/*.sql");
         hints.resources().registerPattern("META-INF/services/**");
-        hints.resources().registerPattern("**/*.i18n.properties");
+        hints.resources().registerPattern("org/hibernate/**/*.i18n.properties");
+        hints.resources().registerPattern("org/jboss/**/*.i18n.properties");
         hints.resources().registerPattern("net/jpountz/util/**");
     }
 

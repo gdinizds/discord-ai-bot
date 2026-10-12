@@ -89,8 +89,7 @@ graalvmNative {
                     '-H:+ReportExceptionStackTraces',
                     '-H:+UnlockExperimentalVMOptions',
                     '--enable-monitoring=heapdump,threaddump,jfr',
-                    '--initialize-at-build-time=org.slf4j.LoggerFactory,ch.qos.logback',
-                    '-H:Preserve=package=dev.gdinizds.discordaibot.*,package=org.flywaydb.*,package=org.postgresql.*,package=com.pgvector.*,package=net.jpountz.*,package=org.springframework.cloud.consul.model.*,package=com.ecwid.consul.*,package=dev.langchain4j.*,package=org.jsoup.*,package=io.github.resilience4j.*'
+                    '-H:Preserve=package=org.flywaydb.*'
             )
         }
     }
