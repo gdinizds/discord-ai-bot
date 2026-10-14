@@ -70,8 +70,9 @@ public record AiBotProperties(
             @DefaultValue("1.0") double temperature,
             @DefaultValue("2048") @Positive int maxOutputTokens,
             @DefaultValue("5") @Positive int maxSequentialToolInvocations,
-            @DefaultValue("75s") Duration chatTimeout,
-            @DefaultValue("5s") Duration embeddingTimeout) {
+            @DefaultValue("330s") Duration chatTimeout,
+            @DefaultValue("5s") Duration embeddingTimeout,
+            @DefaultValue("flex") String serviceTier) {
 
         public String requireApiKey() {
             if (apiKey == null || apiKey.isBlank()) {

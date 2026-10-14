@@ -118,7 +118,10 @@ public class ContextAssembler {
     }
 
     String systemPrompt(ConversationRequest request, List<UserMemory> memories) {
-        StringBuilder sb = new StringBuilder(IDENTITY).append("\n\n").append(SCOPE).append("\n\nContexto:\n");
+        StringBuilder sb = new StringBuilder(IDENTITY)
+                .append("\n\n").append(SCOPE)
+                .append("\n\n").append(TOOLS)
+                .append("\n\nContexto:\n");
         sb.append("- Agora: ").append(DATE_TIME.format(ZonedDateTime.now(clock.withZone(settings.zone()))))
                 .append(" (").append(settings.zone().getId()).append(")\n");
         if (request.guildName() != null) sb.append("- Servidor: ").append(request.guildName()).append('\n');
@@ -136,7 +139,7 @@ public class ContextAssembler {
             }
             sb.append("</memorias>\n");
         }
-        return sb.append('\n').append(TOOLS).toString();
+        return sb.toString();
     }
 
     List<ChatTurn> trimHistory(List<ChatTurn> history) {

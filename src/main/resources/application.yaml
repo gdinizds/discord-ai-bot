@@ -53,7 +53,7 @@ ai-bot:
     outbound-responses: discord.gateway.responses
     gateway-commands: discord.gateway.commands
   session:
-    max-exchanges: 20
+    max-exchanges: 30
     max-history-chars: 12000
   memory:
     top-k: 5
@@ -87,7 +87,7 @@ ai-bot:
     max-bytes: 8388608
     key-prefix: ai-bot
   conversation:
-    timeout: 90s
+    timeout: 340s
     zone: America/Sao_Paulo
   gemini:
     api-key: ${gemini.api-key:}
@@ -98,6 +98,8 @@ ai-bot:
     max-output-tokens: 1536
     thinking-level: low
     max-sequential-tool-invocations: 5
+    chat-timeout: 330s
+    service-tier: ${GEMINI_SERVICE_TIER:flex}
   tools:
     searxng-url: ${SEARXNG_URL:http://searxng.searxng.svc.cluster.local:8080}
     wikipedia-user-agent: "discord-ai-bot/1.0 (+https://github.com/gdinizds/discord-ai-bot)"
@@ -123,7 +125,7 @@ resilience4j:
         minimum-number-of-calls: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
-        slow-call-duration-threshold: 60s
+        slow-call-duration-threshold: 300s
         slow-call-rate-threshold: 80
         ignore-exceptions:
           - dev.gdinizds.discordaibot.adapter.out.gemini.ContentBlockedException
@@ -133,6 +135,8 @@ resilience4j:
         minimum-number-of-calls: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
+        slow-call-duration-threshold: 300s
+        slow-call-rate-threshold: 80
         ignore-exceptions:
           - dev.gdinizds.discordaibot.adapter.out.gemini.ContentBlockedException
           - dev.gdinizds.discordaibot.adapter.out.gemini.InvalidLlmRequestException
@@ -156,8 +160,8 @@ resilience4j:
         wait-duration-in-open-state: 15s
   timelimiter:
     instances:
-      gemini-chat:      { timeout-duration: 75s, cancel-running-future: true }
-      gemini-chat-fallback: { timeout-duration: 60s, cancel-running-future: true }
+      gemini-chat:      { timeout-duration: 330s, cancel-running-future: true }
+      gemini-chat-fallback: { timeout-duration: 330s, cancel-running-future: true }
       gemini-embedding: { timeout-duration: 5s,  cancel-running-future: true }
       searxng:          { timeout-duration: 5s,  cancel-running-future: true }
       open-meteo:       { timeout-duration: 4s,  cancel-running-future: true }

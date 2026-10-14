@@ -47,10 +47,11 @@ class ApplicationContextTest {
     @Test
     void bindsPropertiesWithSpecDefaults() {
         assertThat(properties.discord().botUserId()).isEqualTo("1000000000000000001");
-        assertThat(properties.session().maxExchanges()).isEqualTo(20);
+        assertThat(properties.session().maxExchanges()).isEqualTo(30);
         assertThat(properties.memory().maxDistance()).isEqualTo(0.35);
         assertThat(properties.reply().placeholderMinDelay()).isEqualTo(Duration.ofMillis(1500));
-        assertThat(properties.conversation().timeout()).isEqualTo(Duration.ofSeconds(90));
+        assertThat(properties.conversation().timeout()).isEqualTo(Duration.ofSeconds(340));
+        assertThat(properties.gemini().serviceTier()).isEqualTo("flex");
         assertThat(properties.messages().fallback()).isEqualTo("Não consegui responder agora. Tente de novo em instantes.");
         assertThat(properties.images().maxPerAnswer()).isEqualTo(4);
         assertThat(properties.images().maxBytes()).isEqualTo(8_388_608);
@@ -64,7 +65,7 @@ class ApplicationContextTest {
                 assertThat(cb.getCircuitBreakerConfig().getMinimumNumberOfCalls()).isEqualTo(5));
         assertThat(circuitBreakers.find("database")).isPresent();
         assertThat(timeLimiters.find("gemini-chat")).hasValueSatisfying(tl ->
-                assertThat(tl.getTimeLimiterConfig().getTimeoutDuration()).isEqualTo(Duration.ofSeconds(75)));
+                assertThat(tl.getTimeLimiterConfig().getTimeoutDuration()).isEqualTo(Duration.ofSeconds(330)));
         assertThat(timeLimiters.find("database")).isEmpty();
         assertThat(retries.find("gemini-chat")).isPresent();
         assertThat(bulkheads.find("conversation")).hasValueSatisfying(b ->

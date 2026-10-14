@@ -155,7 +155,7 @@ class GeminiLlmAdapterTest {
         var support = new ToolSupport(MetricsPort.NOOP, executor, 4000);
         var properties = new AiBotProperties(null, null, null, null, null, null,
                 new AiBotProperties.Gemini("", "gemini-test", "gemini-embedding-001", 768, 0.7, 2048, 5,
-                        Duration.ofSeconds(75), Duration.ofSeconds(5)),
+                        Duration.ofSeconds(75), Duration.ofSeconds(5), "flex"),
                 new AiBotProperties.Tools("http://searxng", "http://geo", "http://forecast", "http://{lang}.wiki",
                         "ua", 4000, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1),
                         Duration.ofSeconds(1), 12000, 2_097_152, "http://awesome", Duration.ofSeconds(1),
