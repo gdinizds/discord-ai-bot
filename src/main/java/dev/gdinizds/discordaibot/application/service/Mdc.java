@@ -23,5 +23,20 @@ public final class Mdc {
             }
         };
     }
+
+    public static <T> java.util.function.Supplier<T> propagateSupplier(java.util.function.Supplier<T> task) {
+        Map<String, String> context = MDC.getCopyOfContextMap();
+        if (context == null) return task;
+        return () -> {
+            Map<String, String> previous = MDC.getCopyOfContextMap();
+            MDC.setContextMap(context);
+            try {
+                return task.get();
+            } finally {
+                if (previous == null) MDC.clear();
+                else MDC.setContextMap(previous);
+            }
+        };
+    }
 }
 

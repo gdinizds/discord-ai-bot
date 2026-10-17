@@ -19,9 +19,12 @@ spring:
 
   datasource:
     hikari:
+      pool-name: HikariPool-AiBot
       maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:10}
       minimum-idle: ${HIKARI_MIN_IDLE:2}
       connection-timeout: 5000
+      max-lifetime: 900000
+      leak-detection-threshold: 15000
 
   flyway:
     locations: classpath:db/migration
@@ -30,11 +33,15 @@ spring:
 
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:redpanda.redpanda.svc.cluster.local:9093}
+    listener:
+      concurrency: 3
     consumer:
       group-id: discord-ai-bot
       auto-offset-reset: latest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        partition.assignment.strategy: org.apache.kafka.clients.consumer.CooperativeStickyAssignor
     producer:
       acks: all
       compression-type: lz4
@@ -42,6 +49,9 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       properties:
         enable.idempotence: true
+        linger.ms: 5
+        batch.size: 65536
+        max.in.flight.requests.per.connection: 5
 
 ai-bot:
   discord:
@@ -224,3 +234,10 @@ management:
     metrics:
       export:
         enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        "[discord.aibot.latency]": true
+      percentiles:
+        "[discord.aibot.latency]": 0.5, 0.95, 0.99
+

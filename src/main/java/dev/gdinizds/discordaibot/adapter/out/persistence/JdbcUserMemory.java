@@ -63,6 +63,7 @@ public class JdbcUserMemory implements UserMemoryPort {
     public List<ScoredMemory> search(String guildId, String userId, float[] embedding, int k, double maxDistance) {
         return resilience.call(Instances.DATABASE, () -> transactions.execute(status -> {
             jdbc.sql("SET LOCAL hnsw.iterative_scan = relaxed_order").update();
+            jdbc.sql("SET LOCAL hnsw.ef_search = 64").update();
             return jdbc.sql(SEARCH)
                     .param("embedding", new PGvector(embedding))
                     .param("guildId", Ids.snowflake(guildId))

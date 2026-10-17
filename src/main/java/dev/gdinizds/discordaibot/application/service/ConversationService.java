@@ -35,6 +35,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -194,9 +195,19 @@ public class ConversationService implements HandleConversationUseCase {
 
     private AiAnswer generate(ConversationRequest request) {
         long started = System.nanoTime();
-        List<ChatTurn> turns = loadHistory(request);
-        List<UserMemory> memories = searchMemories(request);
-        List<LoadedAttachment> attachments = loadAttachments(request.attachments());
+        CompletableFuture<List<ChatTurn>> turnsFuture =
+                CompletableFuture.supplyAsync(Mdc.propagateSupplier(() -> loadHistory(request)), executor);
+        CompletableFuture<List<UserMemory>> memoriesFuture =
+                CompletableFuture.supplyAsync(Mdc.propagateSupplier(() -> searchMemories(request)), executor);
+        CompletableFuture<List<LoadedAttachment>> attachmentsFuture =
+                CompletableFuture.supplyAsync(Mdc.propagateSupplier(() -> loadAttachments(request.attachments())), executor);
+
+        CompletableFuture.allOf(turnsFuture, memoriesFuture, attachmentsFuture).join();
+
+        List<ChatTurn> turns = turnsFuture.join();
+        List<UserMemory> memories = memoriesFuture.join();
+        List<LoadedAttachment> attachments = attachmentsFuture.join();
+
         LlmPrompt prompt = contextAssembler.assemble(request, turns, memories, attachments);
         metrics.latency(Stage.CONTEXT, Duration.ofNanos(System.nanoTime() - started));
 

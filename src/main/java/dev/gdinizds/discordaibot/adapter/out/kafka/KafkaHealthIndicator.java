@@ -15,9 +15,12 @@ import java.util.concurrent.TimeUnit;
 public class KafkaHealthIndicator implements HealthIndicator, DisposableBean {
 
     private static final int TIMEOUT_MS = 3000;
+    private static final long CACHE_TTL_MS = 5000L;
 
     private final KafkaAdmin kafkaAdmin;
     private volatile AdminClient admin;
+    private volatile Health cachedHealth;
+    private volatile long cacheExpiresAt;
 
     public KafkaHealthIndicator(KafkaAdmin kafkaAdmin) {
         this.kafkaAdmin = kafkaAdmin;
@@ -25,16 +28,30 @@ public class KafkaHealthIndicator implements HealthIndicator, DisposableBean {
 
     @Override
     public Health health() {
+        long now = System.currentTimeMillis();
+        Health current = cachedHealth;
+        if (current != null && now < cacheExpiresAt) {
+            return current;
+        }
         try {
             String clusterId = admin().describeCluster(new DescribeClusterOptions().timeoutMs(TIMEOUT_MS))
                     .clusterId()
                     .get(TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            return Health.up().withDetail("clusterId", clusterId).build();
+            Health h = Health.up().withDetail("clusterId", clusterId).build();
+            cachedHealth = h;
+            cacheExpiresAt = now + CACHE_TTL_MS;
+            return h;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return Health.down(e).build();
+            Health h = Health.down(e).build();
+            cachedHealth = h;
+            cacheExpiresAt = now + 1000L;
+            return h;
         } catch (Exception e) {
-            return Health.down(e).build();
+            Health h = Health.down(e).build();
+            cachedHealth = h;
+            cacheExpiresAt = now + 1000L;
+            return h;
         }
     }
 

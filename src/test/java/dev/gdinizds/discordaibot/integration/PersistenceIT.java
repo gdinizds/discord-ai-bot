@@ -39,14 +39,15 @@ class PersistenceIT extends IntegrationTest {
     void flywayAppliesAllMigrationsAndPartmanKeepsEightDays() {
         int applied = jdbc.sql("SELECT count(*) FROM ai_bot.flyway_schema_history WHERE success AND version IS NOT NULL")
                 .query(Integer.class).single();
-        assertThat(applied).isEqualTo(8);
+        assertThat(applied).isEqualTo(9);
 
         List<String> retention = jdbc.sql("""
                         SELECT retention FROM partman.part_config
-                         WHERE parent_table IN ('ai_bot.conversation_turns', 'ai_bot.sent_chunks')
+                         WHERE parent_table IN ('ai_bot.conversation_turns', 'ai_bot.sent_chunks', 'ai_bot.channel_messages')
+                         ORDER BY parent_table
                         """)
                 .query(String.class).list();
-        assertThat(retention).containsExactly("8 days", "8 days");
+        assertThat(retention).containsExactly("8 days", "8 days", "8 days");
     }
 
     @Test

@@ -89,7 +89,8 @@ public class GatewayResponsePublisher implements ReplyPublisherPort {
         List<CompletableFuture<?>> futures = new ArrayList<>(responses.size());
         for (GatewayResponse response : responses) {
             String json = objectMapper.writeValueAsString(response);
-            futures.add(kafkaTemplate.send(topic, response.correlationId(), json));
+            String key = partitionKey(response);
+            futures.add(kafkaTemplate.send(topic, key, json));
         }
         try {
             CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).get(10, TimeUnit.SECONDS);
@@ -101,6 +102,16 @@ public class GatewayResponsePublisher implements ReplyPublisherPort {
         }
         log.debug("Published {} response(s) of types {}", responses.size(),
                 responses.stream().map(GatewayResponse::responseType).toList());
+    }
+
+    private static String partitionKey(GatewayResponse response) {
+        if (response.channelId() != null && !response.channelId().isBlank()) {
+            return response.channelId();
+        }
+        if (response.interactionToken() != null && !response.interactionToken().isBlank()) {
+            return response.interactionToken();
+        }
+        return response.correlationId();
     }
 }
 

@@ -5,16 +5,20 @@ import dev.gdinizds.discordaibot.domain.model.TokenUsage;
 import dev.gdinizds.discordaibot.domain.model.TriggerType;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Component
 public class MicrometerMetrics implements MetricsPort {
 
     private final MeterRegistry registry;
     private final DistributionSummary replyChunks;
+    private final ConcurrentMap<Stage, Timer> latencyTimers = new ConcurrentHashMap<>();
 
     public MicrometerMetrics(MeterRegistry registry) {
         this.registry = registry;
@@ -28,7 +32,12 @@ public class MicrometerMetrics implements MetricsPort {
 
     @Override
     public void latency(Stage stage, Duration duration) {
-        registry.timer("discord.aibot.latency", "stage", tag(stage)).record(duration);
+        latencyTimers.computeIfAbsent(stage, s -> Timer.builder("discord.aibot.latency")
+                .tag("stage", tag(s))
+                .publishPercentiles(0.5, 0.95, 0.99)
+                .publishPercentileHistogram()
+                .register(registry))
+                .record(duration);
     }
 
     @Override

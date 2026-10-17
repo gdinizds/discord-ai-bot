@@ -6,7 +6,6 @@ import dev.gdinizds.discordaibot.domain.model.ChannelMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.scheduling.annotation.Scheduled;
 
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -24,7 +23,7 @@ public class JdbcChannelLog implements ChannelLogPort {
             INSERT INTO ai_bot.channel_messages
                    (guild_id, channel_id, message_id, user_id, username, content, created_at)
             VALUES (:guildId, :channelId, :messageId, :userId, :username, :content, :createdAt)
-            ON CONFLICT (message_id) DO NOTHING
+            ON CONFLICT (message_id, created_at) DO NOTHING
             """;
 
     private static final String RECENT = """
@@ -82,16 +81,5 @@ public class JdbcChannelLog implements ChannelLogPort {
         Collections.reverse(chronological);
         return chronological;
     }
-
-    @Scheduled(cron = "${ai-bot.channel-log.purge-cron:0 23 * * * *}")
-    public void purge() {
-        try {
-            int removed = jdbc.sql("DELETE FROM ai_bot.channel_messages WHERE created_at < :cutoff")
-                    .param("cutoff", Timestamp.from(clock.instant().minus(retention)))
-                    .update();
-            if (removed > 0) log.info("Purged {} channel messages", removed);
-        } catch (RuntimeException e) {
-            log.warn("database: channel_messages purge failed: {}", e.toString());
-        }
-    }
 }
+

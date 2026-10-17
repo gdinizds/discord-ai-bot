@@ -49,7 +49,7 @@ class GatewayResponsePublisherTest {
     void interactionAnswerIsDeferredReplyThenHookRepliesFinishedOnlyOnTheLast() {
         publisher.publish(new ReplyTarget.Interaction("tok"), "cid", List.of("um", "dois", "três"));
 
-        List<JsonNode> sent = sent(3);
+        List<JsonNode> sent = sent(3, "tok");
         assertThat(sent).extracting(n -> n.path("responseType").asString())
                 .containsExactly("DEFERRED_REPLY", "REPLY", "REPLY");
         assertThat(sent).extracting(n -> n.path("finished").asBoolean()).containsExactly(false, false, true);
@@ -63,7 +63,7 @@ class GatewayResponsePublisherTest {
     void singleInteractionChunkIsFinished() {
         publisher.publish(new ReplyTarget.Interaction("tok"), "cid", List.of("só um"));
 
-        assertThat(sent(1).getFirst().path("finished").asBoolean()).isTrue();
+        assertThat(sent(1, "tok").getFirst().path("finished").asBoolean()).isTrue();
     }
 
     @Test
@@ -72,7 +72,7 @@ class GatewayResponsePublisherTest {
         publisher.placeholder(target, "cid");
         publisher.publish(target, "cid", List.of("um", "dois"));
 
-        List<JsonNode> sent = sent(3);
+        List<JsonNode> sent = sent(3, "chan");
         assertThat(sent).extracting(n -> n.path("responseType").asString())
                 .containsExactly("REPLY", "UPDATE_MESSAGE", "REPLY");
         assertThat(sent.getFirst().path("content").asString()).isEqualTo("Pensando...");
@@ -89,7 +89,7 @@ class GatewayResponsePublisherTest {
         var image = new OutboundImage("http://garage:3900/bucket/ai-bot/g/cid/imagem-1.png", "imagem-1.png", "Capivara");
         publisher.publish(new ReplyTarget.Interaction("tok"), "cid", List.of("um", "dois"), List.of(image));
 
-        List<JsonNode> sent = sent(2);
+        List<JsonNode> sent = sent(2, "tok");
         assertThat(sent.getFirst().has("attachments")).isFalse();
         JsonNode attachment = sent.getLast().path("attachments").get(0);
         assertThat(attachment.path("url").asString()).isEqualTo("http://garage:3900/bucket/ai-bot/g/cid/imagem-1.png");
@@ -103,7 +103,7 @@ class GatewayResponsePublisherTest {
         var image = new OutboundImage("http://garage:3900/bucket/k.jpg", "imagem-1.jpg", null);
         publisher.publish(new ReplyTarget.Channel("chan", "origin"), "cid", List.of("aqui"), List.of(image));
 
-        JsonNode only = sent(1).getFirst();
+        JsonNode only = sent(1, "chan").getFirst();
         assertThat(only.path("responseType").asString()).isEqualTo("UPDATE_MESSAGE");
         assertThat(only.path("attachments").get(0).has("description")).isFalse();
     }
@@ -118,13 +118,13 @@ class GatewayResponsePublisherTest {
     void ephemeralFollowupsUseEphemeralReply() {
         publisher.publishEphemeral("tok", "cid", List.of("um", "dois"));
 
-        assertThat(sent(2)).extracting(n -> n.path("responseType").asString())
+        assertThat(sent(2, "tok")).extracting(n -> n.path("responseType").asString())
                 .containsExactly("DEFERRED_REPLY", "EPHEMERAL_REPLY");
     }
 
-    private List<JsonNode> sent(int count) {
+    private List<JsonNode> sent(int count, String expectedKey) {
         ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
-        verify(kafka, times(count)).send(eq(TOPIC), eq("cid"), json.capture());
+        verify(kafka, times(count)).send(eq(TOPIC), eq(expectedKey), json.capture());
         return json.getAllValues().stream().map(objectMapper::readTree).toList();
     }
 }
