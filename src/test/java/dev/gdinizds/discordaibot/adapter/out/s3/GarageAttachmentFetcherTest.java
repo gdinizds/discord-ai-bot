@@ -26,5 +26,16 @@ class GarageAttachmentFetcherTest {
     void rejectsUrlWithoutKey() {
         assertThatThrownBy(() -> GarageAttachmentFetcher.parse("http://g:3900/bucket")).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void rejectsAttachmentFromDifferentBucket() {
+        var fetcher = new GarageAttachmentFetcher(null, null, "expected-bucket", 1024);
+        var att = new dev.gdinizds.discordaibot.domain.model.InputAttachment(
+                "http://g:3900/other-bucket/secret.txt", "secret.txt", dev.gdinizds.discordaibot.domain.model.MediaKind.TEXT);
+
+        assertThatThrownBy(() -> fetcher.fetch(att))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Acesso negado ao bucket: other-bucket");
+    }
 }
 

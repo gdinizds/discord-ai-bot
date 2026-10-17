@@ -6,6 +6,7 @@ import dev.gdinizds.discordaibot.domain.model.InputAttachment;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
@@ -15,20 +16,40 @@ public class GarageAttachmentFetcher implements AttachmentFetcherPort {
 
     private final S3Client s3;
     private final Resilience resilience;
+    private final String expectedBucket;
+    private final long maxBytes;
 
     public GarageAttachmentFetcher(S3Client s3, Resilience resilience) {
+        this(s3, resilience, null, 10_485_760L);
+    }
+
+    public GarageAttachmentFetcher(S3Client s3, Resilience resilience, String expectedBucket, long maxBytes) {
         this.s3 = s3;
         this.resilience = resilience;
+        this.expectedBucket = expectedBucket;
+        this.maxBytes = maxBytes;
     }
 
     @Override
     public byte[] fetch(InputAttachment attachment) {
         ObjectLocation location = parse(attachment.objectKey());
-        return resilience.call(INSTANCE, () -> s3.getObjectAsBytes(GetObjectRequest.builder()
-                        .bucket(location.bucket())
-                        .key(location.key())
-                        .build())
-                .asByteArray());
+        if (expectedBucket != null && !expectedBucket.isBlank() && !expectedBucket.equals(location.bucket())) {
+            throw new IllegalArgumentException("Acesso negado ao bucket: " + location.bucket());
+        }
+        return resilience.call(INSTANCE, () -> {
+            try (var response = s3.getObject(GetObjectRequest.builder()
+                    .bucket(location.bucket())
+                    .key(location.key())
+                    .build())) {
+                byte[] data = response.readNBytes((int) Math.min(Integer.MAX_VALUE - 8, maxBytes + 1));
+                if (data.length > maxBytes) {
+                    throw new IllegalArgumentException("Anexo excede o tamanho máximo permitido de " + maxBytes + " bytes");
+                }
+                return data;
+            } catch (IOException e) {
+                throw new IllegalStateException("Falha ao ler o anexo do S3", e);
+            }
+        });
     }
 
     static ObjectLocation parse(String url) {

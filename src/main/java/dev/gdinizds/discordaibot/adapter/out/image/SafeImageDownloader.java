@@ -72,7 +72,12 @@ public class SafeImageDownloader {
         throw new ImageRejectedException("redirecionamentos demais");
     }
 
+    static {
+        java.security.Security.setProperty("networkaddress.cache.ttl", "60");
+    }
+
     public static boolean isPublicAddress(InetAddress address) {
+        if (address == null) return false;
         if (address.isAnyLocalAddress() || address.isLoopbackAddress() || address.isLinkLocalAddress()
                 || address.isSiteLocalAddress() || address.isMulticastAddress()) {
             return false;
@@ -82,15 +87,44 @@ public class SafeImageDownloader {
             int first = b[0] & 0xff;
             int second = b[1] & 0xff;
             if (first == 0 || first >= 224) return false;
+            if (first == 10) return false;
+            if (first == 127) return false;
             if (first == 100 && second >= 64 && second <= 127) return false;
+            if (first == 169 && second == 254) return false;
+            if (first == 172 && second >= 16 && second <= 31) return false;
             if (first == 192 && second == 0 && (b[2] & 0xff) == 0) return false;
+            if (first == 192 && second == 0 && (b[2] & 0xff) == 2) return false;
+            if (first == 192 && second == 168) return false;
             if (first == 198 && (second == 18 || second == 19)) return false;
+            if (first == 198 && second == 51 && (b[2] & 0xff) == 100) return false;
+            if (first == 203 && second == 0 && (b[2] & 0xff) == 113) return false;
             return true;
         }
         if (address instanceof Inet6Address) {
-            return (b[0] & 0xfe) != 0xfc;
+            if (isIPv4Mapped(b)) {
+                try {
+                    return isPublicAddress(InetAddress.getByAddress(new byte[]{b[12], b[13], b[14], b[15]}));
+                } catch (UnknownHostException e) {
+                    return false;
+                }
+            }
+            if ((b[0] & 0xfe) == 0xfc) return false;
+            if ((b[0] & 0xff) == 0xfe && (b[1] & 0xc0) == 0x80) return false;
+            if ((b[0] & 0xff) == 0xfe && (b[1] & 0xc0) == 0xc0) return false;
+            if (b[0] == 0x01 && b[1] == 0x00) return false;
+            if (b[0] == 0x20 && b[1] == 0x01 && b[2] == 0x0d && (b[3] & 0xff) == 0xb8) return false;
+            if (b[0] == 0x00 && b[1] == 0x64 && (b[2] & 0xff) == 0xff && (b[3] & 0xff) == 0x9b) return false;
+            return true;
         }
         return false;
+    }
+
+    private static boolean isIPv4Mapped(byte[] b) {
+        if (b.length != 16) return false;
+        for (int i = 0; i < 10; i++) {
+            if (b[i] != 0) return false;
+        }
+        return (b[10] & 0xff) == 0xff && (b[11] & 0xff) == 0xff;
     }
 
     private void checkDestination(URI uri) {
@@ -115,7 +149,9 @@ public class SafeImageDownloader {
                 .GET()
                 .build();
         try {
-            return client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            checkDestination(uri);
+            return response;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ImageRejectedException("interrompido");
@@ -147,12 +183,22 @@ public class SafeImageDownloader {
         if (!scheme.equals("http") && !scheme.equals("https")) {
             throw new ImageRejectedException("esquema não permitido");
         }
-        if (uri.getHost() == null || uri.getHost().isBlank() || uri.getRawUserInfo() != null) {
+        String host = uri.getHost();
+        if (host == null || host.isBlank() || uri.getRawUserInfo() != null) {
             throw new ImageRejectedException("URL inválida");
         }
         int port = uri.getPort();
         if (standardPortsOnly && port != -1 && port != 80 && port != 443) {
             throw new ImageRejectedException("porta não permitida");
+        }
+        String lowerHost = host.toLowerCase(Locale.ROOT);
+        if (standardPortsOnly && (lowerHost.equals("localhost")
+                || lowerHost.endsWith(".localhost")
+                || lowerHost.endsWith(".local")
+                || lowerHost.endsWith(".internal")
+                || lowerHost.endsWith(".consul")
+                || lowerHost.endsWith(".cluster.local"))) {
+            throw new ImageRejectedException("endereço não permitido");
         }
         return uri;
     }

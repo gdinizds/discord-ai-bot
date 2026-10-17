@@ -20,9 +20,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.springframework.kafka.support.Acknowledgment;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class InboundEventConsumerTest {
 
@@ -142,6 +145,52 @@ class InboundEventConsumerTest {
             assertThat(m.content()).isEqualTo("alguém testou o Java 25?");
         });
         assertThat(handled).isEmpty();
+        assertThat(consumer.inFlight()).isZero();
+    }
+
+    @Test
+    void acknowledgesKafkaRecordWhenConversationFinishes() {
+        var consumer = consumer(4);
+        var ack = mock(Acknowledgment.class);
+
+        consumer.onInteraction(SLASH.formatted(5, 5), "ia", ack);
+        release.countDown();
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> handled.size() == 1);
+        await().atMost(Duration.ofSeconds(5)).until(() -> consumer.inFlight() == 0);
+        verify(ack).acknowledge();
+    }
+
+    @Test
+    void acknowledgesKafkaRecordWhenBusyRejected() {
+        var consumer = consumer(1);
+        var ack1 = mock(Acknowledgment.class);
+        var ack2 = mock(Acknowledgment.class);
+
+        consumer.onInteraction(SLASH.formatted(6, 6), "ia", ack1);
+        consumer.onInteraction(SLASH.formatted(7, 7), "ia", ack2);
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> rejected.size() == 1);
+        verify(ack2).acknowledge();
+
+        release.countDown();
+        await().atMost(Duration.ofSeconds(5)).until(() -> consumer.inFlight() == 0);
+        verify(ack1).acknowledge();
+    }
+
+    @Test
+    void acknowledgesKafkaRecordWhenMessageDoesNotConcernBot() {
+        var consumer = consumer(4);
+        var ack = mock(Acknowledgment.class);
+
+        consumer.onMessageCreated("""
+                {"eventType":"MESSAGE_CREATED","correlationId":"0192a3b4-0000-7000-8000-000000000010",
+                 "guild":{"id":"900000000000000001"},"channelId":"800000000000000001",
+                 "user":{"id":"700000000000000002","username":"ana"},"messageId":"500000000000000002",
+                 "rawPayload":{"content":"mensagem aleatoria"}}
+                """, ack);
+
+        verify(ack).acknowledge();
         assertThat(consumer.inFlight()).isZero();
     }
 }

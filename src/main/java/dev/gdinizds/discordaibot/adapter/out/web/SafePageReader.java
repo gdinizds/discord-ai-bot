@@ -198,7 +198,9 @@ public class SafePageReader implements PageReaderPort {
                 .GET()
                 .build();
         try {
-            return client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            checkDestination(uri);
+            return response;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new PageRejectedException("leitura interrompida");
@@ -224,12 +226,22 @@ public class SafePageReader implements PageReaderPort {
         }
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
         if (!scheme.equals("http") && !scheme.equals("https")) throw new PageRejectedException("só links http e https");
-        if (uri.getHost() == null || uri.getHost().isBlank() || uri.getRawUserInfo() != null) {
+        String host = uri.getHost();
+        if (host == null || host.isBlank() || uri.getRawUserInfo() != null) {
             throw new PageRejectedException("URL inválida");
         }
         int port = uri.getPort();
         if (standardPortsOnly && port != -1 && port != 80 && port != 443) {
             throw new PageRejectedException("porta não permitida");
+        }
+        String lowerHost = host.toLowerCase(Locale.ROOT);
+        if (standardPortsOnly && (lowerHost.equals("localhost")
+                || lowerHost.endsWith(".localhost")
+                || lowerHost.endsWith(".local")
+                || lowerHost.endsWith(".internal")
+                || lowerHost.endsWith(".consul")
+                || lowerHost.endsWith(".cluster.local"))) {
+            throw new PageRejectedException("endereço não permitido");
         }
         return uri;
     }

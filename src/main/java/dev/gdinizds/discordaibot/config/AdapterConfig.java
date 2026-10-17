@@ -136,8 +136,8 @@ public class AdapterConfig {
     }
 
     @Bean
-    public GarageAttachmentFetcher attachmentFetcher(S3Client s3, Resilience r) {
-        return new GarageAttachmentFetcher(s3, r);
+    public GarageAttachmentFetcher attachmentFetcher(S3Client s3, Resilience r, AiBotProperties p) {
+        return new GarageAttachmentFetcher(s3, r, p.s3().bucket(), p.attachments().maxBytes());
     }
 
     @Bean

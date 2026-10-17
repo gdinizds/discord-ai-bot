@@ -13,6 +13,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @ImportRuntimeHints(NativeRuntimeHints.class)
 public class DiscordAiBotApplication {
 
+    static {
+        java.security.Security.setProperty("networkaddress.cache.ttl", "60");
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(DiscordAiBotApplication.class, args);
     }

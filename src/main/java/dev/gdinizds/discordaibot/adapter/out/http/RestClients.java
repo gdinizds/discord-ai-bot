@@ -13,7 +13,7 @@ final class RestClients {
     static RestClient create(RestClient.Builder builder, String baseUrl, Duration timeout) {
         var httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(2))
-                .followRedirects(HttpClient.Redirect.NORMAL)
+                .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
         var factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(timeout);

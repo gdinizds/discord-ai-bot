@@ -8,7 +8,12 @@ final class Ids {
     private Ids() {}
 
     static long snowflake(String id) {
-        return Long.parseLong(id);
+        if (id == null || id.isBlank()) return 0L;
+        try {
+            return Long.parseUnsignedLong(id.strip());
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
     }
 
     static UUID uuid(String correlationId) {

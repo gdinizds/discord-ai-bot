@@ -205,7 +205,7 @@ management:
         include: health, info, prometheus, metrics, circuitbreakers, retries
   endpoint:
     health:
-      show-details: always
+      show-details: never
       probes:
         enabled: true
       group:
