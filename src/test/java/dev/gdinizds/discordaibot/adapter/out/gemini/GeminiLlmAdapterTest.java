@@ -187,7 +187,7 @@ class GeminiLlmAdapterTest {
     }
 
     private static LlmPrompt prompt(String text, List<BinaryPart> binaries) {
-        return new LlmPrompt("c1", KEY, "Você é o HotBCT.", List.of(), text, binaries);
+        return new LlmPrompt("c1", KEY, "Você é um assistente de IA.", List.of(), text, binaries);
     }
 }
 
