@@ -29,6 +29,38 @@ public enum MediaKind {
         };
     }
 
+    public static String detectMimeType(byte[] data, String fileName) {
+        if (data != null && data.length >= 3) {
+            // PNG: 89 50 4E 47
+            if (data.length >= 4 && (data[0] & 0xFF) == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G') {
+                return "image/png";
+            }
+            // JPEG: FF D8 FF
+            if ((data[0] & 0xFF) == 0xFF && (data[1] & 0xFF) == 0xD8 && (data[2] & 0xFF) == 0xFF) {
+                return "image/jpeg";
+            }
+            // GIF: GIF87a or GIF89a
+            if (data.length >= 6 && data[0] == 'G' && data[1] == 'I' && data[2] == 'F' && data[3] == '8'
+                    && (data[4] == '7' || data[4] == '9') && data[5] == 'a') {
+                return "image/gif";
+            }
+            // WebP: RIFF....WEBP
+            if (data.length >= 12 && data[0] == 'R' && data[1] == 'I' && data[2] == 'F' && data[3] == 'F'
+                    && data[8] == 'W' && data[9] == 'E' && data[10] == 'B' && data[11] == 'P') {
+                return "image/webp";
+            }
+            // HEIC / HEIF: ....ftyp
+            if (data.length >= 12 && data[4] == 'f' && data[5] == 't' && data[6] == 'y' && data[7] == 'p') {
+                return "image/heic";
+            }
+            // PDF: %PDF-
+            if (data.length >= 5 && data[0] == '%' && data[1] == 'P' && data[2] == 'D' && data[3] == 'F' && data[4] == '-') {
+                return "application/pdf";
+            }
+        }
+        return mimeType(fileName);
+    }
+
     private static String extension(String fileName) {
         if (fileName == null) return "";
         int dot = fileName.lastIndexOf('.');

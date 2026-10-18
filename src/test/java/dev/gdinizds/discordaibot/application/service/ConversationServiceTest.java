@@ -322,15 +322,16 @@ class ConversationServiceTest {
         var attachments = List.of(
                 new InputAttachment("http://g/b/1/2/foto.png", "foto.png", MediaKind.IMAGE),
                 new InputAttachment("http://g/b/1/2/app.exe", "app.exe", MediaKind.UNSUPPORTED),
-                new InputAttachment("http://g/b/1/2/erro.png", "erro.png", MediaKind.IMAGE));
+                new InputAttachment("http://g/b/1/2/erro.png", "erro.png", MediaKind.IMAGE),
+                new InputAttachment("http://g/b/1/2/vazio.png", "vazio.png", MediaKind.IMAGE));
         var request = new ConversationRequest("c-att", TriggerType.DOT, KEY, "g", "u", "o que é isso?", null,
                 attachments, CHANNEL, clock.instant());
 
         service().handle(request);
 
         assertThat(captured.get().binaries()).singleElement().satisfies(b -> assertThat(b.fileName()).isEqualTo("foto.png"));
-        assertThat(captured.get().userText()).contains("[arquivo ignorado: app.exe", "[arquivo ignorado: erro.png");
-        assertThat(history.turns.getFirst().content()).isEqualTo("o que é isso? [imagem: foto.png] [arquivo: app.exe] [imagem: erro.png]");
+        assertThat(captured.get().userText()).contains("[arquivo ignorado: app.exe", "[arquivo ignorado: erro.png", "[arquivo ignorado: vazio.png (arquivo vazio)]");
+        assertThat(history.turns.getFirst().content()).isEqualTo("o que é isso? [imagem: foto.png] [arquivo: app.exe] [imagem: erro.png] [imagem: vazio.png]");
     }
 
     private ConversationService service() {
@@ -351,6 +352,7 @@ class ConversationServiceTest {
                 cid -> processed.add(cid), sentChunks, publisher, history, embedding, memories,
                 att -> {
                     if (att.fileName().startsWith("erro")) throw new IllegalStateException("garage down");
+                    if (att.fileName().startsWith("vazio")) return new byte[0];
                     return new byte[]{1, 2, 3};
                 },
                 countingLlm, new ContextAssembler(settings, clock), new MessageSplitter(1900, 5, FALLBACK),

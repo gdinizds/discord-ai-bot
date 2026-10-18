@@ -91,8 +91,24 @@ public class ContextAssembler {
                 continue;
             }
             switch (att.kind()) {
-                case IMAGE, PDF -> binaries.add(new BinaryPart(
-                        att.fileName(), att.kind(), MediaKind.mimeType(att.fileName()), loaded.data()));
+                case IMAGE -> {
+                    String mime = MediaKind.detectMimeType(loaded.data(), att.fileName());
+                    if (!mime.startsWith("image/")) {
+                        text.append("\n\n[arquivo ignorado: ").append(att.fileName())
+                                .append(" (formato de imagem inválido ou corrompido)]");
+                    } else {
+                        binaries.add(new BinaryPart(att.fileName(), att.kind(), mime, loaded.data()));
+                    }
+                }
+                case PDF -> {
+                    String mime = MediaKind.detectMimeType(loaded.data(), att.fileName());
+                    if (!"application/pdf".equals(mime)) {
+                        text.append("\n\n[arquivo ignorado: ").append(att.fileName())
+                                .append(" (formato de PDF inválido ou corrompido)]");
+                    } else {
+                        binaries.add(new BinaryPart(att.fileName(), att.kind(), mime, loaded.data()));
+                    }
+                }
                 case TEXT -> text.append("\n\nArquivo `").append(att.fileName()).append("`:\n```\n")
                         .append(new String(loaded.data(), StandardCharsets.UTF_8).strip())
                         .append("\n```");

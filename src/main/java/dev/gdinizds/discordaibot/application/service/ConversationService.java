@@ -287,6 +287,9 @@ public class ConversationService implements HandleConversationUseCase {
             log.warn("Attachment ignored, fetch failed: {}", e.toString());
             return LoadedAttachment.ignored(att, "não foi possível baixar o arquivo");
         }
+        if (data == null || data.length == 0) {
+            return LoadedAttachment.ignored(att, "arquivo vazio");
+        }
         if (data.length > settings.attachmentsMaxBytes()) {
             return LoadedAttachment.ignored(att, "maior que " + settings.attachmentsMaxBytes() / 1_048_576 + " MB");
         }
