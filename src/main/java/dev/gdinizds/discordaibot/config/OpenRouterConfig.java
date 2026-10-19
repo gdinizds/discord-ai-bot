@@ -10,9 +10,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
+import java.util.Map;
+
 @Configuration
 @Profile("!test")
 public class OpenRouterConfig {
+
+    private static final Map<String, String> OPENROUTER_HEADERS = Map.of(
+            "HTTP-Referer", "https://github.com/gdinizds/discord-ai-bot",
+            "X-Title", "Discord AI Bot"
+    );
 
     @Bean
     public ChatModel openRouterChatModel(AiBotProperties properties) {
@@ -35,6 +42,7 @@ public class OpenRouterConfig {
                 .temperature(openrouter.temperature())
                 .maxTokens(openrouter.maxOutputTokens())
                 .timeout(openrouter.chatTimeout())
+                .customHeaders(OPENROUTER_HEADERS)
                 .maxRetries(0)
                 .build();
     }
@@ -48,6 +56,7 @@ public class OpenRouterConfig {
                 .modelName(openrouter.embeddingModel())
                 .dimensions(openrouter.embeddingDimensions())
                 .timeout(openrouter.embeddingTimeout())
+                .customHeaders(OPENROUTER_HEADERS)
                 .maxRetries(0)
                 .build();
     }
