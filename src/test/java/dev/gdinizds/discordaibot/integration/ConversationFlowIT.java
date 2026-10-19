@@ -198,7 +198,17 @@ class ConversationFlowIT extends IntegrationTest {
     private List<ConsumerRecord<String, String>> responsesFor(String cid) {
         poll();
         List<ConsumerRecord<String, String>> matching = new ArrayList<>();
-        for (var r : responses) if (cid.equals(r.key())) matching.add(r);
+        for (var r : responses) {
+            if (cid.equals(r.key())) {
+                matching.add(r);
+            } else if (r.value() != null) {
+                try {
+                    if (cid.equals(objectMapper.readTree(r.value()).path("correlationId").asString())) {
+                        matching.add(r);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
         return matching;
     }
 
