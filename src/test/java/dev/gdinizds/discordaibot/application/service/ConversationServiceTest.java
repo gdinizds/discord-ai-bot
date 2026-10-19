@@ -269,7 +269,7 @@ class ConversationServiceTest {
     @Test
     void openCircuitPublishesFallbackOnTheSameTarget() {
         llm.set(prompt -> {
-            throw CallNotPermittedException.createCallNotPermittedException(CircuitBreaker.ofDefaults("gemini-chat"));
+            throw CallNotPermittedException.createCallNotPermittedException(CircuitBreaker.ofDefaults("openrouter-chat"));
         });
 
         service().handle(request(TriggerType.SLASH, "oi", null, INTERACTION));

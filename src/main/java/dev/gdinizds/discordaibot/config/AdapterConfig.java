@@ -4,13 +4,13 @@ import dev.gdinizds.discordaibot.adapter.in.kafka.InboundEventConsumer;
 import dev.gdinizds.discordaibot.adapter.in.kafka.InboundEventMapper;
 import dev.gdinizds.discordaibot.adapter.in.kafka.TriggerResolver;
 import dev.gdinizds.discordaibot.adapter.in.scheduling.ReminderDispatcher;
-import dev.gdinizds.discordaibot.adapter.out.gemini.AssistantFactory;
-import dev.gdinizds.discordaibot.adapter.out.gemini.AssistantTools;
-import dev.gdinizds.discordaibot.adapter.out.gemini.FailoverLlmAdapter;
-import dev.gdinizds.discordaibot.adapter.out.gemini.GeminiEmbeddingAdapter;
-import dev.gdinizds.discordaibot.adapter.out.gemini.GeminiLlmAdapter;
-import dev.gdinizds.discordaibot.adapter.out.gemini.ResilientChatModel;
-import dev.gdinizds.discordaibot.adapter.out.gemini.tools.ToolSupport;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.AssistantFactory;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.AssistantTools;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.FailoverLlmAdapter;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.OpenRouterEmbeddingAdapter;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.OpenRouterLlmAdapter;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.ResilientChatModel;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.ToolSupport;
 import dev.gdinizds.discordaibot.adapter.out.http.AwesomeApiClient;
 import dev.gdinizds.discordaibot.adapter.out.http.OpenMeteoClient;
 import dev.gdinizds.discordaibot.adapter.out.http.SearxngClient;
@@ -168,8 +168,8 @@ public class AdapterConfig {
     }
 
     @Bean
-    public GeminiEmbeddingAdapter embeddingAdapter(EmbeddingModel model, Resilience r, AiBotProperties p) {
-        return new GeminiEmbeddingAdapter(model, r, p.gemini().embeddingModel(), p.gemini().embeddingDimensions());
+    public OpenRouterEmbeddingAdapter embeddingAdapter(EmbeddingModel model, Resilience r, AiBotProperties p) {
+        return new OpenRouterEmbeddingAdapter(model, r, p.openrouter().embeddingModel(), p.openrouter().embeddingDimensions());
     }
 
     @Bean
@@ -195,10 +195,10 @@ public class AdapterConfig {
     @Bean
     public LlmPort llmAdapter(AssistantFactory assistants, ObjectProvider<FallbackChatModel> fallback, Resilience r,
                               AiBotProperties p) {
-        LlmPort primary = new GeminiLlmAdapter(assistants, p.gemini().chatModel());
+        LlmPort primary = new OpenRouterLlmAdapter(assistants, p.openrouter().chatModel());
         FallbackChatModel secondary = fallback.getIfAvailable();
         if (secondary == null) return primary;
-        LlmPort backup = new GeminiLlmAdapter(assistants.withChatModel(
+        LlmPort backup = new OpenRouterLlmAdapter(assistants.withChatModel(
                 new ResilientChatModel(secondary.model(), r, ResilientChatModel.FALLBACK_INSTANCE)), secondary.name());
         return new FailoverLlmAdapter(primary, backup, secondary.name());
     }

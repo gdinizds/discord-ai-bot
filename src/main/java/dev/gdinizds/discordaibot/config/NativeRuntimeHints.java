@@ -1,6 +1,6 @@
 package dev.gdinizds.discordaibot.config;
 
-import dev.gdinizds.discordaibot.adapter.out.gemini.AssistantFactory;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.AssistantFactory;
 import org.flywaydb.core.extensibility.Plugin;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
@@ -34,7 +34,7 @@ public class NativeRuntimeHints implements RuntimeHintsRegistrar {
                 "classpath*:dev/gdinizds/discordaibot/**/*.class",
                 "classpath*:org/flywaydb/**/*.class",
                 "classpath*:com/pgvector/**/*.class",
-                "classpath*:dev/langchain4j/model/googleai/**/*.class",
+                "classpath*:dev/langchain4j/model/openai/**/*.class",
                 "classpath*:dev/langchain4j/model/chat/**/*.class",
                 "classpath*:dev/langchain4j/agent/tool/**/*.class",
                 "classpath*:dev/langchain4j/service/**/*.class",

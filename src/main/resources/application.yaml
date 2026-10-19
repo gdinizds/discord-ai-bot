@@ -2,7 +2,7 @@ spring:
   application:
     name: discord-ai-bot
   config:
-    import: "optional:consul:,optional:file:/vault/secrets/db.yaml,optional:file:/vault/secrets/s3.yaml,optional:file:/vault/secrets/gemini.yaml"
+    import: "optional:consul:,optional:file:/vault/secrets/db.yaml,optional:file:/vault/secrets/s3.yaml,optional:file:/vault/secrets/openrouter.yaml"
 
   cloud:
     consul:
@@ -88,8 +88,10 @@ ai-bot:
     default-input-price: 1.50
     default-output-price: 9.00
     prices:
-      "[gemini-3.5-flash-lite]": { input: 0.30, output: 2.50 }
-      "[gemini-3.5-flash]": { input: 1.50, output: 9.00 }
+      "[google/gemini-3.5-flash-lite]": { input: 0.30, output: 2.50 }
+      "[google/gemini-3.1-flash-lite]": { input: 0.25, output: 1.50 }
+      "[google/gemini-2.5-flash]": { input: 0.30, output: 2.50 }
+      "[google/gemini-2.5-flash-lite]": { input: 0.10, output: 0.40 }
   images:
     max-per-answer: 4
     search-timeout: 25s
@@ -99,17 +101,17 @@ ai-bot:
   conversation:
     timeout: 340s
     zone: America/Sao_Paulo
-  gemini:
-    api-key: ${gemini.api-key:}
-    chat-model: ${GEMINI_CHAT_MODEL:}
-    embedding-model: gemini-embedding-001
+  openrouter:
+    api-key: ${openrouter.api-key:${OPENROUTER_API_KEY:}}
+    base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+    chat-model: ${OPENROUTER_CHAT_MODEL:google/gemini-3.5-flash-lite}
+    fallback-chat-model: ${OPENROUTER_FALLBACK_CHAT_MODEL:google/gemini-3.1-flash-lite}
+    embedding-model: ${OPENROUTER_EMBEDDING_MODEL:google/gemini-embedding-001}
     embedding-dimensions: 768
-    temperature: ${GEMINI_TEMPERATURE:1.0}
+    temperature: ${OPENROUTER_TEMPERATURE:1.0}
     max-output-tokens: 1536
-    thinking-level: low
     max-sequential-tool-invocations: 5
     chat-timeout: 330s
-    service-tier: ${GEMINI_SERVICE_TIER:flex}
   tools:
     searxng-url: ${SEARXNG_URL:http://searxng.searxng.svc.cluster.local:8080}
     wikipedia-user-agent: "discord-ai-bot/1.0 (+https://github.com/gdinizds/discord-ai-bot)"
@@ -130,7 +132,7 @@ resilience4j:
         failure-rate-threshold: 50
         permitted-number-of-calls-in-half-open-state: 3
     instances:
-      gemini-chat:
+      openrouter-chat:
         sliding-window-size: 20
         minimum-number-of-calls: 10
         failure-rate-threshold: 50
@@ -138,9 +140,9 @@ resilience4j:
         slow-call-duration-threshold: 300s
         slow-call-rate-threshold: 80
         ignore-exceptions:
-          - dev.gdinizds.discordaibot.adapter.out.gemini.ContentBlockedException
-          - dev.gdinizds.discordaibot.adapter.out.gemini.InvalidLlmRequestException
-      gemini-chat-fallback:
+          - dev.gdinizds.discordaibot.adapter.out.openrouter.ContentBlockedException
+          - dev.gdinizds.discordaibot.adapter.out.openrouter.InvalidLlmRequestException
+      openrouter-chat-fallback:
         sliding-window-size: 20
         minimum-number-of-calls: 10
         failure-rate-threshold: 50
@@ -148,9 +150,9 @@ resilience4j:
         slow-call-duration-threshold: 300s
         slow-call-rate-threshold: 80
         ignore-exceptions:
-          - dev.gdinizds.discordaibot.adapter.out.gemini.ContentBlockedException
-          - dev.gdinizds.discordaibot.adapter.out.gemini.InvalidLlmRequestException
-      gemini-embedding:
+          - dev.gdinizds.discordaibot.adapter.out.openrouter.ContentBlockedException
+          - dev.gdinizds.discordaibot.adapter.out.openrouter.InvalidLlmRequestException
+      openrouter-embedding:
         sliding-window-size: 20
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
@@ -170,9 +172,9 @@ resilience4j:
         wait-duration-in-open-state: 15s
   timelimiter:
     instances:
-      gemini-chat:      { timeout-duration: 330s, cancel-running-future: true }
-      gemini-chat-fallback: { timeout-duration: 330s, cancel-running-future: true }
-      gemini-embedding: { timeout-duration: 5s,  cancel-running-future: true }
+      openrouter-chat:          { timeout-duration: 330s, cancel-running-future: true }
+      openrouter-chat-fallback: { timeout-duration: 330s, cancel-running-future: true }
+      openrouter-embedding:     { timeout-duration: 5s,  cancel-running-future: true }
       searxng:          { timeout-duration: 5s,  cancel-running-future: true }
       open-meteo:       { timeout-duration: 4s,  cancel-running-future: true }
       wikipedia:        { timeout-duration: 4s,  cancel-running-future: true }
@@ -181,15 +183,15 @@ resilience4j:
       web-page:         { timeout-duration: 11s, cancel-running-future: true }
   retry:
     instances:
-      gemini-chat:
+      openrouter-chat:
         max-attempts: 2
         wait-duration: 2s
         enable-exponential-backoff: true
         exponential-backoff-multiplier: 2
         retry-exceptions:
-          - dev.gdinizds.discordaibot.adapter.out.gemini.RateLimitedException
-          - dev.gdinizds.discordaibot.adapter.out.gemini.ServiceUnavailableException
-      gemini-embedding:
+          - dev.gdinizds.discordaibot.adapter.out.openrouter.RateLimitedException
+          - dev.gdinizds.discordaibot.adapter.out.openrouter.ServiceUnavailableException
+      openrouter-embedding:
         max-attempts: 2
         wait-duration: 500ms
         ignore-exceptions: [io.github.resilience4j.circuitbreaker.CallNotPermittedException]
@@ -206,7 +208,7 @@ resilience4j:
   bulkhead:
     instances:
       conversation: { max-concurrent-calls: 32, max-wait-duration: 0 }
-      gemini-chat:  { max-concurrent-calls: 16, max-wait-duration: 10s }
+      openrouter-chat:  { max-concurrent-calls: 16, max-wait-duration: 10s }
 
 management:
   endpoints:

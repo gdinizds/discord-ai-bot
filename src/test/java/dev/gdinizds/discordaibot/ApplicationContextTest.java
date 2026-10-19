@@ -51,7 +51,8 @@ class ApplicationContextTest {
         assertThat(properties.memory().maxDistance()).isEqualTo(0.35);
         assertThat(properties.reply().placeholderMinDelay()).isEqualTo(Duration.ofMillis(1500));
         assertThat(properties.conversation().timeout()).isEqualTo(Duration.ofSeconds(340));
-        assertThat(properties.gemini().serviceTier()).isEqualTo("flex");
+        assertThat(properties.openrouter().baseUrl()).isEqualTo("https://openrouter.ai/api/v1");
+        assertThat(properties.openrouter().embeddingDimensions()).isEqualTo(768);
         assertThat(properties.messages().fallback()).isEqualTo("Não consegui responder agora. Tente de novo em instantes.");
         assertThat(properties.images().maxPerAnswer()).isEqualTo(4);
         assertThat(properties.images().maxBytes()).isEqualTo(8_388_608);
@@ -60,14 +61,14 @@ class ApplicationContextTest {
 
     @Test
     void resilienceInstancesFromYamlAreRegistered() {
-        assertThat(circuitBreakers.find("gemini-chat")).isPresent();
+        assertThat(circuitBreakers.find("openrouter-chat")).isPresent();
         assertThat(circuitBreakers.find("searxng")).hasValueSatisfying(cb ->
                 assertThat(cb.getCircuitBreakerConfig().getMinimumNumberOfCalls()).isEqualTo(5));
         assertThat(circuitBreakers.find("database")).isPresent();
-        assertThat(timeLimiters.find("gemini-chat")).hasValueSatisfying(tl ->
+        assertThat(timeLimiters.find("openrouter-chat")).hasValueSatisfying(tl ->
                 assertThat(tl.getTimeLimiterConfig().getTimeoutDuration()).isEqualTo(Duration.ofSeconds(330)));
         assertThat(timeLimiters.find("database")).isEmpty();
-        assertThat(retries.find("gemini-chat")).isPresent();
+        assertThat(retries.find("openrouter-chat")).isPresent();
         assertThat(bulkheads.find("conversation")).hasValueSatisfying(b ->
                 assertThat(b.getBulkheadConfig().getMaxConcurrentCalls()).isEqualTo(32));
         assertThat(circuitBreakers.find("awesomeapi")).isPresent();
@@ -89,8 +90,8 @@ class ApplicationContextTest {
 
     @Test
     void withoutAFallbackModelTheLlmPortIsThePlainAdapter() {
-        assertThat(llm).isInstanceOf(dev.gdinizds.discordaibot.adapter.out.gemini.GeminiLlmAdapter.class);
-        assertThat(circuitBreakers.find("gemini-chat-fallback")).isPresent();
+        assertThat(llm).isInstanceOf(dev.gdinizds.discordaibot.adapter.out.openrouter.OpenRouterLlmAdapter.class);
+        assertThat(circuitBreakers.find("openrouter-chat-fallback")).isPresent();
     }
 
     @Test

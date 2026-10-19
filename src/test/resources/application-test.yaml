@@ -11,9 +11,9 @@ spring:
 ai-bot:
   discord:
     bot-user-id: "1000000000000000001"
-  gemini:
+  openrouter:
     api-key: ""
-    chat-model: gemini-test
+    chat-model: openrouter-test
   tools:
     searxng-url: http://localhost:1
   limits:

@@ -21,7 +21,7 @@ public record AiBotProperties(
         @Valid @NotNull @DefaultValue Memory memory,
         @Valid @NotNull @DefaultValue Reply reply,
         @Valid @NotNull @DefaultValue Attachments attachments,
-        @Valid @NotNull Gemini gemini,
+        @Valid @NotNull OpenRouter openrouter,
         @Valid @NotNull Tools tools,
         @Valid @NotNull S3 s3,
         @Valid @NotNull @DefaultValue Conversation conversation,
@@ -62,22 +62,23 @@ public record AiBotProperties(
             @DefaultValue("10485760") @Positive long maxBytes,
             @DefaultValue("102400") @Positive long textMaxBytes) {}
 
-    public record Gemini(
+    public record OpenRouter(
             String apiKey,
+            @DefaultValue("https://openrouter.ai/api/v1") @NotBlank String baseUrl,
             @NotBlank String chatModel,
-            @DefaultValue("gemini-embedding-001") @NotBlank String embeddingModel,
+            String fallbackChatModel,
+            @DefaultValue("google/gemini-embedding-001") @NotBlank String embeddingModel,
             @DefaultValue("768") @Positive int embeddingDimensions,
             @DefaultValue("1.0") double temperature,
             @DefaultValue("2048") @Positive int maxOutputTokens,
             @DefaultValue("5") @Positive int maxSequentialToolInvocations,
             @DefaultValue("330s") Duration chatTimeout,
-            @DefaultValue("5s") Duration embeddingTimeout,
-            @DefaultValue("flex") String serviceTier) {
+            @DefaultValue("5s") Duration embeddingTimeout) {
 
         public String requireApiKey() {
             if (apiKey == null || apiKey.isBlank()) {
                 throw new IllegalStateException(
-                        "ai-bot.gemini.api-key is missing; it must come from /vault/secrets/gemini.yaml");
+                        "ai-bot.openrouter.api-key is missing; it must come from /vault/secrets/openrouter.yaml");
             }
             return apiKey;
         }
