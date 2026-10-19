@@ -11,11 +11,13 @@ import dev.gdinizds.discordaibot.adapter.out.openrouter.OpenRouterEmbeddingAdapt
 import dev.gdinizds.discordaibot.adapter.out.openrouter.OpenRouterLlmAdapter;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.ResilientChatModel;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.ToolSupport;
+import dev.gdinizds.discordaibot.adapter.out.audio.GarageAudioStore;
 import dev.gdinizds.discordaibot.adapter.out.http.AwesomeApiClient;
 import dev.gdinizds.discordaibot.adapter.out.http.OpenMeteoClient;
 import dev.gdinizds.discordaibot.adapter.out.http.SearxngClient;
 import dev.gdinizds.discordaibot.adapter.out.http.WikipediaClient;
 import dev.gdinizds.discordaibot.adapter.out.image.GarageImageStore;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.OpenRouterTtsAdapter;
 import dev.gdinizds.discordaibot.adapter.out.image.SafeImageDownloader;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcChannelLog;
 import dev.gdinizds.discordaibot.adapter.out.persistence.JdbcConversationHistory;
@@ -201,6 +203,16 @@ public class AdapterConfig {
         LlmPort backup = new OpenRouterLlmAdapter(assistants.withChatModel(
                 new ResilientChatModel(secondary.model(), r, ResilientChatModel.FALLBACK_INSTANCE)), secondary.name());
         return new FailoverLlmAdapter(primary, backup, secondary.name());
+    }
+
+    @Bean
+    public GarageAudioStore audioStore(S3Client s3, Resilience r, AiBotProperties p) {
+        return new GarageAudioStore(s3, r, p.s3().endpoint(), p.s3().bucket(), p.images().keyPrefix());
+    }
+
+    @Bean
+    public OpenRouterTtsAdapter ttsAdapter(RestClient.Builder builder, ObjectMapper om, Resilience r, AiBotProperties p) {
+        return new OpenRouterTtsAdapter(builder, om, r, p);
     }
 }
 

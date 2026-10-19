@@ -57,16 +57,24 @@ class ApplicationContextTest {
         assertThat(properties.images().maxPerAnswer()).isEqualTo(4);
         assertThat(properties.images().maxBytes()).isEqualTo(8_388_608);
         assertThat(properties.images().keyPrefix()).isEqualTo("ai-bot");
+        assertThat(properties.tts().enabled()).isTrue();
+        assertThat(properties.tts().model()).isEqualTo("fish-audio/s2.1-pro-free:free");
+        assertThat(properties.tts().voice()).isEqualTo("24522123b5804bf691a8450d9187f03e");
+        assertThat(properties.tts().timeout()).isEqualTo(Duration.ofSeconds(25));
+        assertThat(properties.tts().maxChars()).isEqualTo(1200);
     }
 
     @Test
     void resilienceInstancesFromYamlAreRegistered() {
         assertThat(circuitBreakers.find("openrouter-chat")).isPresent();
+        assertThat(circuitBreakers.find("openrouter-tts")).isPresent();
         assertThat(circuitBreakers.find("searxng")).hasValueSatisfying(cb ->
                 assertThat(cb.getCircuitBreakerConfig().getMinimumNumberOfCalls()).isEqualTo(5));
         assertThat(circuitBreakers.find("database")).isPresent();
         assertThat(timeLimiters.find("openrouter-chat")).hasValueSatisfying(tl ->
                 assertThat(tl.getTimeLimiterConfig().getTimeoutDuration()).isEqualTo(Duration.ofSeconds(330)));
+        assertThat(timeLimiters.find("openrouter-tts")).hasValueSatisfying(tl ->
+                assertThat(tl.getTimeLimiterConfig().getTimeoutDuration()).isEqualTo(Duration.ofSeconds(25)));
         assertThat(timeLimiters.find("database")).isEmpty();
         assertThat(retries.find("openrouter-chat")).isPresent();
         assertThat(bulkheads.find("conversation")).hasValueSatisfying(b ->

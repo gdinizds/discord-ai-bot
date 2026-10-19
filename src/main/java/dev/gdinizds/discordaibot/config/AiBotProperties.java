@@ -29,7 +29,8 @@ public record AiBotProperties(
         @Valid @NotNull @DefaultValue Images images,
         @Valid @NotNull @DefaultValue Limits limits,
         @Valid @NotNull @DefaultValue ChannelLog channelLog,
-        @Valid @NotNull @DefaultValue Reminders reminders) {
+        @Valid @NotNull @DefaultValue Reminders reminders,
+        @Valid @NotNull @DefaultValue Tts tts) {
 
     public record Discord(@NotBlank String botUserId) {}
 
@@ -166,5 +167,12 @@ public record AiBotProperties(
             @DefaultValue("Estou ocupado com muitas perguntas agora, tente em instantes.") String busy,
             @DefaultValue("Me mande uma pergunta: `.ia sua pergunta`, `/ia` ou uma menção com o texto. "
                     + "Imagens, PDFs e arquivos de texto funcionam no `.ia` e na menção.") String help) {}
+
+    public record Tts(
+            @DefaultValue("true") boolean enabled,
+            @DefaultValue("fish-audio/s2.1-pro-free:free") @NotBlank String model,
+            @DefaultValue("24522123b5804bf691a8450d9187f03e") @NotBlank String voice,
+            @DefaultValue("25s") Duration timeout,
+            @DefaultValue("1200") @Positive int maxChars) {}
 }
 

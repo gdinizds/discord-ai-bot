@@ -2,6 +2,7 @@ package dev.gdinizds.discordaibot.application.service;
 
 import dev.gdinizds.discordaibot.application.port.in.HandleConversationUseCase;
 import dev.gdinizds.discordaibot.application.port.out.AttachmentFetcherPort;
+import dev.gdinizds.discordaibot.application.port.out.AudioStorePort;
 import dev.gdinizds.discordaibot.application.port.out.ConversationHistoryPort;
 import dev.gdinizds.discordaibot.application.port.out.EmbeddingPort;
 import dev.gdinizds.discordaibot.application.port.out.LlmPort;
@@ -11,6 +12,7 @@ import dev.gdinizds.discordaibot.application.port.out.MetricsPort.Stage;
 import dev.gdinizds.discordaibot.application.port.out.ProcessedEventPort;
 import dev.gdinizds.discordaibot.application.port.out.ReplyPublisherPort;
 import dev.gdinizds.discordaibot.application.port.out.SentChunkPort;
+import dev.gdinizds.discordaibot.application.port.out.TtsPort;
 import dev.gdinizds.discordaibot.application.port.out.UserMemoryPort;
 import dev.gdinizds.discordaibot.domain.model.AiAnswer;
 import dev.gdinizds.discordaibot.domain.model.ChatTurn;
@@ -62,6 +64,8 @@ public class ConversationService implements HandleConversationUseCase {
     private final ExecutorService executor;
     private final Sleeper sleeper;
     private final UsageService usage;
+    private final TtsPort tts;
+    private final AudioStorePort audioStore;
 
     public ConversationService(ProcessedEventPort processedEvents, SentChunkPort sentChunks,
                                ReplyPublisherPort replyPublisher, ConversationHistoryPort history,
@@ -69,7 +73,8 @@ public class ConversationService implements HandleConversationUseCase {
                                AttachmentFetcherPort attachmentFetcher, LlmPort llm,
                                ContextAssembler contextAssembler, MessageSplitter splitter,
                                MetricsPort metrics, ConversationSettings settings, Clock clock,
-                               ExecutorService executor, Sleeper sleeper, UsageService usage) {
+                               ExecutorService executor, Sleeper sleeper, UsageService usage,
+                               TtsPort tts, AudioStorePort audioStore) {
         this.processedEvents = processedEvents;
         this.sentChunks = sentChunks;
         this.replyPublisher = replyPublisher;
@@ -86,6 +91,20 @@ public class ConversationService implements HandleConversationUseCase {
         this.executor = executor;
         this.sleeper = sleeper;
         this.usage = usage;
+        this.tts = tts;
+        this.audioStore = audioStore;
+    }
+
+    public ConversationService(ProcessedEventPort processedEvents, SentChunkPort sentChunks,
+                               ReplyPublisherPort replyPublisher, ConversationHistoryPort history,
+                               EmbeddingPort embedding, UserMemoryPort userMemory,
+                               AttachmentFetcherPort attachmentFetcher, LlmPort llm,
+                               ContextAssembler contextAssembler, MessageSplitter splitter,
+                               MetricsPort metrics, ConversationSettings settings, Clock clock,
+                               ExecutorService executor, Sleeper sleeper, UsageService usage) {
+        this(processedEvents, sentChunks, replyPublisher, history, embedding, userMemory,
+                attachmentFetcher, llm, contextAssembler, splitter, metrics, settings, clock,
+                executor, sleeper, usage, null, null);
     }
 
     @Override
@@ -113,11 +132,16 @@ public class ConversationService implements HandleConversationUseCase {
                 ? List.of(settings.fallbackText())
                 : splitter.split(answer.text());
 
+        String audioUrl = null;
+        if (request.speak() && !answer.fallback() && tts != null && audioStore != null && settings.ttsEnabled()) {
+            audioUrl = synthesizeAndStoreAudio(request, answer.text());
+        }
+
         waitForPlaceholder(placeholderAt);
         long publishStarted = System.nanoTime();
         try {
             replyPublisher.publish(target, request.correlationId(), chunks,
-                    answer.fallback() ? List.of() : answer.images());
+                    answer.fallback() ? List.of() : answer.images(), audioUrl);
         } catch (RuntimeException e) {
             log.error("Failed to publish answer: {}", e.toString());
             metrics.request(request.trigger(), Outcome.FALLBACK);
@@ -339,6 +363,38 @@ public class ConversationService implements HandleConversationUseCase {
         } catch (RuntimeException e) {
             log.warn("Could not register sent chunks: {}", e.toString());
         }
+    }
+
+    private String synthesizeAndStoreAudio(ConversationRequest request, String fullText) {
+        if (fullText == null || fullText.isBlank()) return null;
+        String textToSpeak = fullText.strip();
+        if (textToSpeak.length() > settings.ttsMaxChars()) {
+            int end = settings.ttsMaxChars();
+            if (Character.isHighSurrogate(textToSpeak.charAt(end - 1))) {
+                end--;
+            }
+            textToSpeak = textToSpeak.substring(0, end);
+        }
+        try {
+            String finalText = textToSpeak;
+            Future<String> future = executor.submit(Mdc.propagate(() -> {
+                byte[] audio = tts.synthesize(finalText);
+                if (audio == null || audio.length == 0) return null;
+                return audioStore.store(request.key().guildId(), request.correlationId(), audio);
+            }));
+            return future.get(settings.ttsTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            log.warn("TTS timed out after {}", settings.ttsTimeout());
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause() == null ? e : e.getCause();
+            log.warn("TTS synthesis or upload failed: {}", cause.toString());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("TTS interrupted: {}", e.toString());
+        } catch (RuntimeException e) {
+            log.warn("TTS failed: {}", e.toString());
+        }
+        return null;
     }
 }
 

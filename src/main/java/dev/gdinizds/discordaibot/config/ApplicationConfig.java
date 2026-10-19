@@ -2,6 +2,7 @@ package dev.gdinizds.discordaibot.config;
 
 import dev.gdinizds.discordaibot.application.port.in.ManageMemoryUseCase;
 import dev.gdinizds.discordaibot.application.port.out.AttachmentFetcherPort;
+import dev.gdinizds.discordaibot.application.port.out.AudioStorePort;
 import dev.gdinizds.discordaibot.application.port.out.ChannelLogPort;
 import dev.gdinizds.discordaibot.application.port.out.ConversationHistoryPort;
 import dev.gdinizds.discordaibot.application.port.out.EmbeddingPort;
@@ -11,6 +12,7 @@ import dev.gdinizds.discordaibot.application.port.out.ProcessedEventPort;
 import dev.gdinizds.discordaibot.application.port.out.ReminderPort;
 import dev.gdinizds.discordaibot.application.port.out.ReplyPublisherPort;
 import dev.gdinizds.discordaibot.application.port.out.SentChunkPort;
+import dev.gdinizds.discordaibot.application.port.out.TtsPort;
 import dev.gdinizds.discordaibot.application.port.out.UsagePort;
 import dev.gdinizds.discordaibot.application.port.out.UserMemoryPort;
 import dev.gdinizds.discordaibot.application.service.ChannelLogService;
@@ -48,6 +50,7 @@ public class ApplicationConfig {
 
     @Bean
     public ConversationSettings conversationSettings(AiBotProperties p) {
+        var tts = p.tts();
         return new ConversationSettings(
                 p.session().maxExchanges(),
                 p.session().maxHistoryChars(),
@@ -61,7 +64,10 @@ public class ApplicationConfig {
                 ZoneId.of(p.conversation().zone()),
                 p.messages().fallback(),
                 p.messages().busy(),
-                p.messages().help());
+                p.messages().help(),
+                tts.enabled(),
+                tts.timeout(),
+                tts.maxChars());
     }
 
     @Bean
@@ -138,10 +144,11 @@ public class ApplicationConfig {
                                                    ContextAssembler contextAssembler, MessageSplitter splitter,
                                                    MetricsPort metrics, ConversationSettings settings, Clock clock,
                                                    @Qualifier("conversationExecutor") ExecutorService executor,
-                                                   UsageService usage) {
+                                                   UsageService usage,
+                                                   TtsPort tts, AudioStorePort audioStore) {
         return new ConversationService(processedEvents, sentChunks, replyPublisher, history, embedding, userMemory,
                 attachmentFetcher, llm, contextAssembler, splitter, metrics, settings, clock, executor, Sleeper.SYSTEM,
-                usage);
+                usage, tts, audioStore);
     }
 }
 

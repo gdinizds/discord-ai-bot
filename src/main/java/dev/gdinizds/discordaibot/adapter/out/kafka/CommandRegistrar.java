@@ -19,7 +19,8 @@ public class CommandRegistrar implements ApplicationRunner {
               "name": "ia",
               "description": "Pergunte algo para a IA",
               "parameters": [
-                { "name": "pergunta", "description": "Sua pergunta", "type": "STRING", "required": true }
+                { "name": "pergunta", "description": "Sua pergunta", "type": "STRING", "required": true },
+                { "name": "falar", "description": "Receber a resposta também em áudio", "type": "BOOLEAN", "required": false }
               ],
               "is_deleted": false
             }
@@ -29,7 +30,7 @@ public class CommandRegistrar implements ApplicationRunner {
             {
               "prefix": "DOT",
               "name": "ia",
-              "description": "Pergunte algo para a IA, aceita imagens: .ia pergunta",
+              "description": "Pergunte algo para a IA, aceita imagens e flag -falar: .ia [-falar] pergunta",
               "is_deleted": false
             }
             """;

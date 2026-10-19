@@ -62,6 +62,12 @@ public class ContextAssembler {
             stack, projetos, como quer ser tratado). Nunca salve dados sensíveis (documentos, senhas, \
             tokens, saúde, finanças) nem fatos sobre outras pessoas.""";
 
+    private static final String TTS_INSTRUCTIONS = """
+            Narração em Áudio (Text-to-Speech):
+            - A sua resposta será narrada via TTS para o usuário.
+            - Enriqueça a resposta inserindo tags de entonação e emoção suportadas pela Fish Audio nos trechos convenientes para dar naturalidade e expressividade à fala (ex: `(happy)`, `(excited)`, `(calm)`, `(sad)`, `(surprised)`, `(whispering)`).
+            - As tags devem vir entre parênteses no início de orações ou antes de termos de ênfase.
+            - Mantenha a resposta objetiva, conversacional e fluida. Evite tabelas longas ou blocos densos de código quando este modo estiver ativado, pois o conteúdo será falado.""";
 
     private final ConversationSettings settings;
     private final Clock clock;
@@ -154,6 +160,9 @@ public class ContextAssembler {
                 sb.append("- [").append(m.category()).append("] ").append(neutralize(m.content())).append('\n');
             }
             sb.append("</memorias>\n");
+        }
+        if (request.speak()) {
+            sb.append("\n").append(TTS_INSTRUCTIONS).append("\n");
         }
         return sb.toString();
     }

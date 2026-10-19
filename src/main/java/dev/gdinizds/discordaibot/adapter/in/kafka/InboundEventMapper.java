@@ -19,10 +19,12 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class InboundEventMapper {
 
     static final long DISCORD_EPOCH_MILLIS = 1_420_070_400_000L;
+    private static final Pattern FALAR_FLAG = Pattern.compile("(?i)(?<!\\S)-falar(?!\\S)");
 
     private final String botUserId;
     private final Clock clock;
@@ -34,8 +36,9 @@ public class InboundEventMapper {
 
     public ConversationRequest fromSlash(InboundEvent event) {
         String prompt = text(raw(event).path("args").path("pergunta"));
+        boolean speak = raw(event).path("args").path("falar").asBoolean(false);
         return request(event, TriggerType.SLASH, prompt, null, List.of(),
-                new ReplyTarget.Interaction(event.interactionToken()));
+                new ReplyTarget.Interaction(event.interactionToken()), speak);
     }
 
     public ConversationRequest fromDotCommand(InboundEvent event) {
@@ -46,7 +49,15 @@ public class InboundEventMapper {
             for (JsonNode arg : raw.path("args")) args.add(arg.asString());
             prompt = String.join(" ", args);
         }
-        return request(event, TriggerType.DOT, prompt, referencedContent(raw), attachments(event), channelTarget(event));
+        boolean speak = false;
+        if (prompt != null) {
+            var matcher = FALAR_FLAG.matcher(prompt);
+            if (matcher.find()) {
+                speak = true;
+                prompt = matcher.replaceAll("").replaceAll(" +", " ").strip();
+            }
+        }
+        return request(event, TriggerType.DOT, prompt, referencedContent(raw), attachments(event), channelTarget(event), speak);
     }
 
     public ConversationRequest fromMessage(InboundEvent event, TriggerType trigger) {
@@ -87,12 +98,17 @@ public class InboundEventMapper {
     }
 
     private ConversationRequest request(InboundEvent event, TriggerType trigger, String prompt, String quoted,
-                                        List<InputAttachment> attachments, ReplyTarget target) {
+                                        List<InputAttachment> attachments, ReplyTarget target, boolean speak) {
         var key = new ConversationKey(event.guildId(), event.channelId(), event.userId());
         String guildName = event.guild() == null ? null : event.guild().name();
         String username = event.user() == null ? null : event.user().username();
         return new ConversationRequest(event.correlationId(), trigger, key, guildName, username,
-                prompt == null ? "" : prompt.strip(), quoted, attachments, target, clock.instant());
+                prompt == null ? "" : prompt.strip(), quoted, attachments, target, clock.instant(), speak);
+    }
+
+    private ConversationRequest request(InboundEvent event, TriggerType trigger, String prompt, String quoted,
+                                        List<InputAttachment> attachments, ReplyTarget target) {
+        return request(event, trigger, prompt, quoted, attachments, target, false);
     }
 
     private static ReplyTarget channelTarget(InboundEvent event) {

@@ -163,7 +163,7 @@ class OpenRouterLlmAdapterTest {
                         Duration.ofSeconds(60), Duration.ofSeconds(1), 8000, Duration.ofSeconds(1), Duration.ofSeconds(1)),
                 null, null, null,
                 new AiBotProperties.Images(4, Duration.ofSeconds(5), Duration.ofSeconds(1), 1_000_000, "ai-bot", "ua"),
-                null, null, null);
+                null, null, null, null);
         ManageMemoryUseCase memories = new ManageMemoryUseCase() {
             @Override public MemorySaveResult save(String g, String u, String c, String cat, String cid) { return MemorySaveResult.INSERTED; }
             @Override public List<UserMemory> list(String g, String u) { return List.of(); }

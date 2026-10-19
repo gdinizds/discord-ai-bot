@@ -41,7 +41,7 @@ class GatewayResponsePublisherTest {
                 new AiBotProperties.Topics("a", "b", "c", TOPIC, "e"),
                 null, null,
                 new AiBotProperties.Reply(1900, 5, "Pensando...", Duration.ofMillis(1500)),
-                null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null);
         publisher = new GatewayResponsePublisher(kafka, objectMapper, properties);
     }
 
@@ -120,6 +120,27 @@ class GatewayResponsePublisherTest {
 
         assertThat(sent(2, "tok")).extracting(n -> n.path("responseType").asString())
                 .containsExactly("DEFERRED_REPLY", "EPHEMERAL_REPLY");
+    }
+
+    @Test
+    void audioGoesOnlyOnTheLastMessageAlongWithImages() {
+        var image = new OutboundImage("http://garage:3900/bucket/ai-bot/g/cid/imagem-1.png", "imagem-1.png", "Capivara");
+        String audioUrl = "http://garage:3900/bucket/ai-bot/g/cid/fala.mp3";
+        publisher.publish(new ReplyTarget.Interaction("tok"), "cid", List.of("um", "dois"), List.of(image), audioUrl);
+
+        List<JsonNode> sent = sent(2, "tok");
+        assertThat(sent.getFirst().has("attachments")).isFalse();
+        JsonNode lastAttachments = sent.getLast().path("attachments");
+        assertThat(lastAttachments.size()).isEqualTo(2);
+
+        JsonNode imgNode = lastAttachments.get(0);
+        assertThat(imgNode.path("url").asString()).isEqualTo("http://garage:3900/bucket/ai-bot/g/cid/imagem-1.png");
+        assertThat(imgNode.path("name").asString()).isEqualTo("imagem-1.png");
+
+        JsonNode audioNode = lastAttachments.get(1);
+        assertThat(audioNode.path("url").asString()).isEqualTo(audioUrl);
+        assertThat(audioNode.path("name").asString()).isEqualTo("resposta.mp3");
+        assertThat(audioNode.path("description").asString()).isEqualTo("Áudio da resposta narrado");
     }
 
     private List<JsonNode> sent(int count, String expectedKey) {

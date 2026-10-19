@@ -9,10 +9,14 @@ public interface ReplyPublisherPort {
 
     void placeholder(ReplyTarget target, String correlationId);
 
-    void publish(ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images);
+    void publish(ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images, String audioUrl);
+
+    default void publish(ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images) {
+        publish(target, correlationId, chunks, images, null);
+    }
 
     default void publish(ReplyTarget target, String correlationId, List<String> chunks) {
-        publish(target, correlationId, chunks, List.of());
+        publish(target, correlationId, chunks, List.of(), null);
     }
 
     void publishDirect(ReplyTarget target, String correlationId, String content);

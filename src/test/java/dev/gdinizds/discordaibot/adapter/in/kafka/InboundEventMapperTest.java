@@ -136,4 +136,37 @@ class InboundEventMapperTest {
         assertThat(InboundEventMapper.snowflakeInstant("não")).isNull();
         assertThat(InboundEventMapper.snowflakeInstant(null)).isNull();
     }
+
+    @Test
+    void slashCommandWithFalarTrue() {
+        String json = """
+                {"eventType":"INTERACTION_COMMAND","correlationId":"cid-1","guild":{"id":"900000000000000001","name":"HotBCT"},"channelId":"800000000000000001","user":{"id":"700000000000000001","username":"guilherme"},"interactionToken":"tok-1","version":1,"attachments":[],"rawPayload":{"args":{"pergunta":"Olá","falar":true}}}
+                """;
+        InboundEvent event = objectMapper.readValue(json, InboundEvent.class);
+        ConversationRequest request = mapper.fromSlash(event);
+        assertThat(request.speak()).isTrue();
+        assertThat(request.prompt()).isEqualTo("Olá");
+    }
+
+    @Test
+    void dotCommandWithFalarFlagStripsFlagAndSetsSpeak() {
+        String json = """
+                {"eventType":"MESSAGE_COMMAND","correlationId":"cid-2","guild":{"id":"900000000000000001"},"channelId":"800000000000000001","messageId":"600000000000000002","user":{"id":"700000000000000001"},"version":1,"attachments":[],"rawPayload":{"content":"-falar me conte uma piada"}}
+                """;
+        InboundEvent event = objectMapper.readValue(json, InboundEvent.class);
+        ConversationRequest request = mapper.fromDotCommand(event);
+        assertThat(request.speak()).isTrue();
+        assertThat(request.prompt()).isEqualTo("me conte uma piada");
+    }
+
+    @Test
+    void dotCommandWithCaseInsensitiveFlagInTheMiddleOrEnd() {
+        String json = """
+                {"eventType":"MESSAGE_COMMAND","correlationId":"cid-3","guild":{"id":"900000000000000001"},"channelId":"800000000000000001","messageId":"600000000000000003","user":{"id":"700000000000000001"},"version":1,"attachments":[],"rawPayload":{"content":"me conte uma piada -FALAR"}}
+                """;
+        InboundEvent event = objectMapper.readValue(json, InboundEvent.class);
+        ConversationRequest request = mapper.fromDotCommand(event);
+        assertThat(request.speak()).isTrue();
+        assertThat(request.prompt()).isEqualTo("me conte uma piada");
+    }
 }

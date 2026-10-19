@@ -112,6 +112,12 @@ ai-bot:
     max-output-tokens: 1536
     max-sequential-tool-invocations: 5
     chat-timeout: 330s
+  tts:
+    enabled: true
+    model: ${OPENROUTER_TTS_MODEL:fish-audio/s2.1-pro-free:free}
+    voice: ${OPENROUTER_TTS_VOICE:24522123b5804bf691a8450d9187f03e}
+    timeout: 25s
+    max-chars: 1200
   tools:
     searxng-url: ${SEARXNG_URL:http://searxng.searxng.svc.cluster.local:8080}
     wikipedia-user-agent: "discord-ai-bot/1.0 (+https://github.com/gdinizds/discord-ai-bot)"
@@ -156,6 +162,10 @@ resilience4j:
         sliding-window-size: 20
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
+      openrouter-tts:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
       searxng:    { base-config: http-tool, wait-duration-in-open-state: 30s }
       open-meteo: { base-config: http-tool, wait-duration-in-open-state: 60s }
       wikipedia:  { base-config: http-tool, wait-duration-in-open-state: 60s }
@@ -175,6 +185,7 @@ resilience4j:
       openrouter-chat:          { timeout-duration: 330s, cancel-running-future: true }
       openrouter-chat-fallback: { timeout-duration: 330s, cancel-running-future: true }
       openrouter-embedding:     { timeout-duration: 5s,  cancel-running-future: true }
+      openrouter-tts:           { timeout-duration: 25s, cancel-running-future: true }
       searxng:          { timeout-duration: 5s,  cancel-running-future: true }
       open-meteo:       { timeout-duration: 4s,  cancel-running-future: true }
       wikipedia:        { timeout-duration: 4s,  cancel-running-future: true }

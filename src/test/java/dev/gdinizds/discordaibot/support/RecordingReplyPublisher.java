@@ -12,7 +12,11 @@ public class RecordingReplyPublisher implements ReplyPublisherPort {
     public enum Kind { PLACEHOLDER, PUBLISH, DIRECT, EPHEMERAL }
 
     public record Call(Kind kind, ReplyTarget target, String correlationId, List<String> chunks,
-                       List<OutboundImage> images) {}
+                       List<OutboundImage> images, String audioUrl) {
+        public Call(Kind kind, ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images) {
+            this(kind, target, correlationId, chunks, images, null);
+        }
+    }
 
     public final List<Call> calls = new CopyOnWriteArrayList<>();
 
@@ -22,8 +26,13 @@ public class RecordingReplyPublisher implements ReplyPublisherPort {
     }
 
     @Override
+    public void publish(ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images, String audioUrl) {
+        calls.add(new Call(Kind.PUBLISH, target, correlationId, chunks, images, audioUrl));
+    }
+
+    @Override
     public void publish(ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images) {
-        calls.add(new Call(Kind.PUBLISH, target, correlationId, chunks, images));
+        publish(target, correlationId, chunks, images, null);
     }
 
     @Override

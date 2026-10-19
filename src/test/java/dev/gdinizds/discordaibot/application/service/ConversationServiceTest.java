@@ -1,10 +1,12 @@
 package dev.gdinizds.discordaibot.application.service;
 
+import dev.gdinizds.discordaibot.application.port.out.AudioStorePort;
 import dev.gdinizds.discordaibot.application.port.out.ConversationHistoryPort;
 import dev.gdinizds.discordaibot.application.port.out.EmbeddingPort;
 import dev.gdinizds.discordaibot.application.port.out.LlmPort;
 import dev.gdinizds.discordaibot.application.port.out.MetricsPort;
 import dev.gdinizds.discordaibot.application.port.out.SentChunkPort;
+import dev.gdinizds.discordaibot.application.port.out.TtsPort;
 import dev.gdinizds.discordaibot.application.port.out.UsagePort;
 import dev.gdinizds.discordaibot.domain.model.AiAnswer;
 import dev.gdinizds.discordaibot.domain.model.ChatTurn;
@@ -334,6 +336,44 @@ class ConversationServiceTest {
         assertThat(history.turns.getFirst().content()).isEqualTo("o que é isso? [imagem: foto.png] [arquivo: app.exe] [imagem: erro.png] [imagem: vazio.png]");
     }
 
+    @Test
+    void speaksResponseWhenRequested() {
+        var ttsCalls = new ArrayList<String>();
+        TtsPort tts = text -> {
+            ttsCalls.add(text);
+            return new byte[]{10, 20, 30};
+        };
+        AudioStorePort audioStore = (guildId, correlationId, data) -> "http://garage/fala.mp3";
+        var service = service(new EmbeddingPort() {
+            @Override public float[] embed(String text) { return DeterministicEmbeddingModel.vectorOf(text); }
+            @Override public String modelName() { return "test"; }
+        }, tts, audioStore);
+
+        llm.set(prompt -> new AiAnswer("(happy) Olá amigo!", List.of(), TokenUsage.NONE, false));
+
+        service.handle(request(TriggerType.SLASH, "fale comigo", null, INTERACTION, true));
+
+        assertThat(ttsCalls).containsExactly("(happy) Olá amigo!");
+        assertThat(publisher.last().audioUrl()).isEqualTo("http://garage/fala.mp3");
+    }
+
+    @Test
+    void ttsFailureDegradesGracefullyAndDeliversText() {
+        TtsPort failingTts = text -> { throw new RuntimeException("OpenRouter 503"); };
+        AudioStorePort audioStore = (guildId, correlationId, data) -> "http://garage/fala.mp3";
+        var service = service(new EmbeddingPort() {
+            @Override public float[] embed(String text) { return DeterministicEmbeddingModel.vectorOf(text); }
+            @Override public String modelName() { return "test"; }
+        }, failingTts, audioStore);
+
+        llm.set(prompt -> new AiAnswer("Texto normal", List.of(), TokenUsage.NONE, false));
+
+        service.handle(request(TriggerType.SLASH, "fale comigo", null, INTERACTION, true));
+
+        assertThat(publisher.last().chunks()).containsExactly("Texto normal");
+        assertThat(publisher.last().audioUrl()).isNull();
+    }
+
     private ConversationService service() {
         return service(new EmbeddingPort() {
             @Override public float[] embed(String text) { return DeterministicEmbeddingModel.vectorOf(text); }
@@ -342,8 +382,13 @@ class ConversationServiceTest {
     }
 
     private ConversationService service(EmbeddingPort embedding) {
+        return service(embedding, null, null);
+    }
+
+    private ConversationService service(EmbeddingPort embedding, TtsPort tts, AudioStorePort audioStore) {
         var settings = new ConversationSettings(20, 24_000, 5, 0.35, Duration.ofMillis(1500), timeout,
-                4, 10_485_760, 102_400, ZoneId.of("America/Sao_Paulo"), FALLBACK, "ocupado", HELP);
+                4, 10_485_760, 102_400, ZoneId.of("America/Sao_Paulo"), FALLBACK, "ocupado", HELP,
+                true, Duration.ofSeconds(5), 1200);
         LlmPort countingLlm = prompt -> {
             llmCalls.incrementAndGet();
             return llm.get().answer(prompt);
@@ -356,12 +401,16 @@ class ConversationServiceTest {
                     return new byte[]{1, 2, 3};
                 },
                 countingLlm, new ContextAssembler(settings, clock), new MessageSplitter(1900, 5, FALLBACK),
-                MetricsPort.NOOP, settings, clock, executor, sleeps::add, usage);
+                MetricsPort.NOOP, settings, clock, executor, sleeps::add, usage, tts, audioStore);
     }
 
     private ConversationRequest request(TriggerType trigger, String prompt, String quoted, ReplyTarget target) {
+        return request(trigger, prompt, quoted, target, false);
+    }
+
+    private ConversationRequest request(TriggerType trigger, String prompt, String quoted, ReplyTarget target, boolean speak) {
         return new ConversationRequest("cid-" + trigger + "-" + prompt.hashCode(), trigger, KEY, "HotBCT", "gui",
-                prompt, quoted, List.of(), target, clock.instant());
+                prompt, quoted, List.of(), target, clock.instant(), speak);
     }
 
     private static class FakeHistory implements ConversationHistoryPort {

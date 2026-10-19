@@ -42,6 +42,11 @@ public class GatewayResponsePublisher implements ReplyPublisherPort {
 
     @Override
     public void publish(ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images) {
+        publish(target, correlationId, chunks, images, null);
+    }
+
+    @Override
+    public void publish(ReplyTarget target, String correlationId, List<String> chunks, List<OutboundImage> images, String audioUrl) {
         List<GatewayResponse> responses = new ArrayList<>(chunks.size());
         for (int i = 0; i < chunks.size(); i++) {
             String chunk = chunks.get(i);
@@ -55,11 +60,17 @@ public class GatewayResponsePublisher implements ReplyPublisherPort {
                         : GatewayResponse.channelReply(channelId, originMessageId, correlationId, chunk);
             });
         }
-        if (!images.isEmpty() && !responses.isEmpty()) {
-            List<GatewayResponse.Attachment> files = images.stream()
-                    .map(image -> new GatewayResponse.Attachment(image.url(), image.fileName(), image.description()))
-                    .toList();
-            responses.set(responses.size() - 1, responses.getLast().withAttachments(files));
+        List<GatewayResponse.Attachment> attachments = new ArrayList<>();
+        if (!images.isEmpty()) {
+            for (OutboundImage image : images) {
+                attachments.add(new GatewayResponse.Attachment(image.url(), image.fileName(), image.description()));
+            }
+        }
+        if (audioUrl != null && !audioUrl.isBlank()) {
+            attachments.add(new GatewayResponse.Attachment(audioUrl, "resposta.mp3", "Áudio da resposta narrado"));
+        }
+        if (!attachments.isEmpty() && !responses.isEmpty()) {
+            responses.set(responses.size() - 1, responses.getLast().withAttachments(attachments));
         }
         send(responses);
     }
