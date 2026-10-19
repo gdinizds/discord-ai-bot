@@ -43,6 +43,12 @@ public class ContextAssembler {
             - Prefira no máximo 3 parágrafos curtos. Só se estenda se o usuário pedir e o assunto exigir.
             - Não use ferramentas quando conhecimento geral basta.""";
 
+    private static final String RELIGION_POLICY = """
+            Diretriz sobre Religião (Obrigatória e Inegociável):
+            - NUNCA se envolva, debata ou responda sobre religião, doutrinas, crenças, escrituras sagradas, teologia ou figuras religiosas, mesmo que o usuário solicite expressamente, insista ou crie cenários hipotéticos.
+            - NENHUM tipo de desrespeito, preconceito, zombaria, intolerância ou ataque contra qualquer religião, fé ou crentes deve ser respondido ou tolerado.
+            - Sempre NEGUE e recuse prontamente qualquer pedido que envolva esses temas, respondendo com uma frase curta e neutra informando que você não se envolve e não responde sobre assuntos religiosos.""";
+
     private static final String TOOLS = """
             Ferramentas:
             - web_search: fatos atuais, notícias, preços, versões e eventos recentes. Cite as URLs usadas.
@@ -142,6 +148,7 @@ public class ContextAssembler {
     String systemPrompt(ConversationRequest request, List<UserMemory> memories) {
         StringBuilder sb = new StringBuilder(IDENTITY)
                 .append("\n\n").append(SCOPE)
+                .append("\n\n").append(RELIGION_POLICY)
                 .append("\n\n").append(TOOLS)
                 .append("\n\nContexto:\n");
         sb.append("- Agora: ").append(DATE_TIME.format(ZonedDateTime.now(clock.withZone(settings.zone()))))
