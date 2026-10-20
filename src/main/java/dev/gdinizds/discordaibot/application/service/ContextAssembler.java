@@ -16,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class ContextAssembler {
 
@@ -69,11 +70,21 @@ public class ContextAssembler {
             tokens, saúde, finanças) nem fatos sobre outras pessoas.""";
 
     private static final String TTS_INSTRUCTIONS = """
-            Narração em Áudio (Text-to-Speech):
-            - A sua resposta será narrada via TTS para o usuário.
-            - Enriqueça a resposta inserindo tags de entonação e emoção suportadas pela Fish Audio nos trechos convenientes para dar naturalidade e expressividade à fala (ex: `(happy)`, `(excited)`, `(calm)`, `(sad)`, `(surprised)`, `(whispering)`).
-            - As tags devem vir entre parênteses no início de orações ou antes de termos de ênfase.
-            - Mantenha a resposta objetiva, conversacional e fluida. Evite tabelas longas ou blocos densos de código quando este modo estiver ativado, pois o conteúdo será falado.""";
+            Narração em Áudio (Text-to-Speech - Fish Audio S2.1):
+            - A sua resposta será narrada por voz para o usuário usando o modelo Fish Audio S2.1.
+            - O modelo suporta mais de 60 emoções e efeitos sonoros controlados por marcadores entre colchetes [tag]. Use-os para dar expressividade, sentimento e naturalidade humana à fala:
+              * Emoções básicas: [happy], [calm], [excited], [curious], [confident], [surprised], [satisfied], [grateful], [empathetic], [proud], [relaxed], [sad], [angry], [nervous], [scared], [worried], [sarcastic].
+              * Emoções avançadas: [hopeful], [optimistic], [determined], [confused], [doubtful], [disappointed], [nostalgic], [sympathetic], [compassionate], [anxious], [resigned].
+              * Modificadores de intensidade: [slightly sad], [very excited], [extremely angry], [warm and happy].
+              * Marcadores de tom: [whispering], [soft tone], [in a hurry tone], [shouting], e [emphasis] colocado imediatamente antes da palavra ou termo a enfatizar (ex: "Isso é [emphasis] muito importante.").
+              * Efeitos sonoros humanos: [laughing] (acompanhe de riso textual, ex: "[laughing] Ha ha ha!"), [chuckling] ("Heh, heh"), [sighing] ("sigh"), [gasping], [groaning], [yawning], [clear throat] ("ahem").
+              * Pausas de fala: [break] (pausa breve) e [long-break] (pausa estendida).
+              * Combinações: você pode combinar até 2 a 3 marcadores (ex: [excited][laughing], [mysterious][whispering], [sad][sighing]).
+            - Regras de formatação obrigatórias:
+              1. Coloque o marcador de emoção principal no início de cada oração ou frase (ex: "[happy] Olá! [curious] O que você gostaria de explorar hoje?").
+              2. SEMPRE use colchetes [tag], NUNCA use parênteses (tag).
+              3. As tags de áudio serão automaticamente removidas do texto final exibido no chat do Discord, sendo usadas apenas para sintetizar o áudio narrado.
+              4. Mantenha a resposta concisa, fluida e coloquial. Evite tabelas longas, listas gigantes e blocos densos de código quando este modo estiver ativado, pois o conteúdo será falado.""";
 
     private final ConversationSettings settings;
     private final Clock clock;
@@ -188,6 +199,25 @@ public class ContextAssembler {
             window.removeFirst();
         }
         return window;
+    }
+
+    private static final Pattern S2_TAG_PATTERN = Pattern.compile(
+            "(?<=^|[\\s.,!?;:\"'()>\\]-])\\[([a-zA-Z\\s,_'-]{1,35})\\](?!\\()[ \\t]*");
+    private static final Pattern S1_TAG_PATTERN = Pattern.compile(
+            "\\((happy|sad|angry|excited|calm|nervous|confident|surprised|satisfied|delighted|" +
+            "scared|worried|upset|frustrated|depressed|empathetic|embarrassed|disgusted|moved|" +
+            "proud|relaxed|grateful|curious|sarcastic|whispering|shouting|screaming|laughing|" +
+            "chuckling|sighing|groaning|panting|gasping|yawning|snoring|clear throat|break|long-break)\\)[ \\t]*",
+            Pattern.CASE_INSENSITIVE);
+
+    public static String stripTtsTags(String text) {
+        if (text == null || text.isBlank()) {
+            return text == null ? "" : text;
+        }
+        String stripped = S2_TAG_PATTERN.matcher(text).replaceAll("");
+        stripped = S1_TAG_PATTERN.matcher(stripped).replaceAll("");
+        stripped = stripped.replaceAll("(?m)[ \\t]{2,}", " ");
+        return stripped.strip();
     }
 
     private static String quote(String content) {

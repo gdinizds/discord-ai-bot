@@ -101,7 +101,41 @@ class ContextAssemblerTest {
         LlmPrompt promptWithoutSpeak = assembler.assemble(withoutSpeak, List.of(), List.of(), List.of());
         LlmPrompt promptWithSpeak = assembler.assemble(withSpeak, List.of(), List.of(), List.of());
 
-        assertThat(promptWithoutSpeak.systemPrompt()).doesNotContain("Narração em Áudio (Text-to-Speech):");
-        assertThat(promptWithSpeak.systemPrompt()).contains("Narração em Áudio (Text-to-Speech):");
+        assertThat(promptWithoutSpeak.systemPrompt()).doesNotContain("Narração em Áudio (Text-to-Speech");
+        assertThat(promptWithSpeak.systemPrompt()).contains("Narração em Áudio (Text-to-Speech - Fish Audio S2.1):");
+    }
+
+    @Test
+    @DisplayName("Deve remover marcadores de emoção e manter links markdown e código")
+    void shouldStripTtsTagsCorrectly() {
+        assertThat(ContextAssembler.stripTtsTags("[happy] Olá! Que ótimo te ver por aqui."))
+                .isEqualTo("Olá! Que ótimo te ver por aqui.");
+
+        assertThat(ContextAssembler.stripTtsTags("[sad][whispering] Sinto muito por isso..."))
+                .isEqualTo("Sinto muito por isso...");
+
+        assertThat(ContextAssembler.stripTtsTags("Isso é [emphasis] muito importante."))
+                .isEqualTo("Isso é muito importante.");
+
+        assertThat(ContextAssembler.stripTtsTags("[curious] Você sabia disso? [surprised] É impressionante!"))
+                .isEqualTo("Você sabia disso? É impressionante!");
+
+        assertThat(ContextAssembler.stripTtsTags("[laughing] Ha ha ha! Conseguimos!"))
+                .isEqualTo("Ha ha ha! Conseguimos!");
+
+        assertThat(ContextAssembler.stripTtsTags("[break] Um momento..."))
+                .isEqualTo("Um momento...");
+
+        // Links Markdown NÃO devem ser removidos
+        assertThat(ContextAssembler.stripTtsTags("[happy] Veja em [nosso site](https://example.com) agora."))
+                .isEqualTo("Veja em [nosso site](https://example.com) agora.");
+
+        // Parênteses legados S1 também são limpos
+        assertThat(ContextAssembler.stripTtsTags("(happy) Bom dia!"))
+                .isEqualTo("Bom dia!");
+
+        // Array / índice de código não é removido
+        assertThat(ContextAssembler.stripTtsTags("valor: list[0] e array[index]"))
+                .isEqualTo("valor: list[0] e array[index]");
     }
 }

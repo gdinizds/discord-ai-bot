@@ -128,14 +128,19 @@ public class ConversationService implements HandleConversationUseCase {
         }
 
         AiAnswer answer = generateWithinBudget(request);
-        List<String> chunks = answer.fallback()
-                ? List.of(settings.fallbackText())
-                : splitter.split(answer.text());
 
         String audioUrl = null;
         if (request.speak() && !answer.fallback() && tts != null && audioStore != null && settings.ttsEnabled()) {
             audioUrl = synthesizeAndStoreAudio(request, answer.text());
         }
+
+        String displayText = request.speak() && !answer.fallback()
+                ? ContextAssembler.stripTtsTags(answer.text())
+                : answer.text();
+
+        List<String> chunks = answer.fallback()
+                ? List.of(settings.fallbackText())
+                : splitter.split(displayText);
 
         waitForPlaceholder(placeholderAt);
         long publishStarted = System.nanoTime();

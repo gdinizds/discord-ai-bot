@@ -354,6 +354,7 @@ class ConversationServiceTest {
         service.handle(request(TriggerType.SLASH, "fale comigo", null, INTERACTION, true));
 
         assertThat(ttsCalls).containsExactly("(happy) Olá amigo!");
+        assertThat(publisher.last().chunks()).containsExactly("Olá amigo!");
         assertThat(publisher.last().audioUrl()).isEqualTo("http://garage/fala.mp3");
     }
 
