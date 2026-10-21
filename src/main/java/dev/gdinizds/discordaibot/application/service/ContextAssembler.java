@@ -28,6 +28,7 @@ public class ContextAssembler {
             - Responda na língua do usuário; se não der para saber, use português do Brasil.
             - Seja direto. Use o markdown do Discord: negrito, listas e blocos de código com a linguagem.
             - Nunca mencione @everyone, @here nem cargos.
+            - Nunca use marcadores de som, entonação ou emoção (como [chuckle], [laughing], (laughing), *risos*) no texto normal.
             - Respostas longas viram várias mensagens; prefira respostas enxutas.""";
 
     private static final String SCOPE = """
@@ -84,7 +85,8 @@ public class ContextAssembler {
               1. Coloque o marcador de emoção principal no início de cada oração ou frase (ex: "[happy] Olá! [curious] O que você gostaria de explorar hoje?").
               2. SEMPRE use colchetes [tag], NUNCA use parênteses (tag).
               3. As tags de áudio serão automaticamente removidas do texto final exibido no chat do Discord, sendo usadas apenas para sintetizar o áudio narrado.
-              4. Mantenha a resposta concisa, fluida e coloquial. Evite tabelas longas, listas gigantes e blocos densos de código quando este modo estiver ativado, pois o conteúdo será falado.""";
+              4. NUNCA ria ou escreva risadas com "kkk", "kkkkk", "rsrs" ou "ksks", pois o sintetizador de voz lê as letras literalmente ("k-k-k"). Para expressar riso falado, use SEMPRE a convenção fonética internacional ("Ha ha ha", "Haha", "Heh, heh", "Aha"), de preferência combinada com [laughing] ou [chuckling] (ex: "[laughing] Ha ha ha! Que engraçado!").
+              5. Mantenha a resposta concisa, fluida e coloquial. Evite tabelas longas, listas gigantes e blocos densos de código quando este modo estiver ativado, pois o conteúdo será falado.""";
 
     private final ConversationSettings settings;
     private final Clock clock;
@@ -207,7 +209,7 @@ public class ContextAssembler {
             "\\((happy|sad|angry|excited|calm|nervous|confident|surprised|satisfied|delighted|" +
             "scared|worried|upset|frustrated|depressed|empathetic|embarrassed|disgusted|moved|" +
             "proud|relaxed|grateful|curious|sarcastic|whispering|shouting|screaming|laughing|" +
-            "chuckling|sighing|groaning|panting|gasping|yawning|snoring|clear throat|break|long-break)\\)[ \\t]*",
+            "chuckling|chuckle|sighing|groaning|panting|gasping|yawning|snoring|clear throat|break|long-break)\\)[ \\t]*",
             Pattern.CASE_INSENSITIVE);
 
     public static String stripTtsTags(String text) {

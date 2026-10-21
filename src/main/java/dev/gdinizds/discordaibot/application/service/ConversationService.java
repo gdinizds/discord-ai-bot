@@ -43,6 +43,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 
 public class ConversationService implements HandleConversationUseCase {
 
@@ -134,9 +135,9 @@ public class ConversationService implements HandleConversationUseCase {
             audioUrl = synthesizeAndStoreAudio(request, answer.text());
         }
 
-        String displayText = request.speak() && !answer.fallback()
-                ? ContextAssembler.stripTtsTags(answer.text())
-                : answer.text();
+        String displayText = answer.fallback()
+                ? settings.fallbackText()
+                : ContextAssembler.stripTtsTags(answer.text());
 
         List<String> chunks = answer.fallback()
                 ? List.of(settings.fallbackText())
@@ -370,9 +371,16 @@ public class ConversationService implements HandleConversationUseCase {
         }
     }
 
+    private static final Pattern BR_LAUGHTER = Pattern.compile("(?i)\\b(k{2,}|(rs){2,}|(ks){2,}|(hue){2,})\\b");
+
+    static String normalizeSpokenLaughter(String text) {
+        if (text == null || text.isBlank()) return text == null ? "" : text;
+        return BR_LAUGHTER.matcher(text).replaceAll("ha ha ha");
+    }
+
     private String synthesizeAndStoreAudio(ConversationRequest request, String fullText) {
         if (fullText == null || fullText.isBlank()) return null;
-        String textToSpeak = fullText.strip();
+        String textToSpeak = normalizeSpokenLaughter(fullText.strip());
         if (textToSpeak.length() > settings.ttsMaxChars()) {
             int end = settings.ttsMaxChars();
             if (Character.isHighSurrogate(textToSpeak.charAt(end - 1))) {

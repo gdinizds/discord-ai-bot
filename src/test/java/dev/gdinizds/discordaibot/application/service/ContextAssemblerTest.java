@@ -102,7 +102,9 @@ class ContextAssemblerTest {
         LlmPrompt promptWithSpeak = assembler.assemble(withSpeak, List.of(), List.of(), List.of());
 
         assertThat(promptWithoutSpeak.systemPrompt()).doesNotContain("Narração em Áudio (Text-to-Speech");
-        assertThat(promptWithSpeak.systemPrompt()).contains("Narração em Áudio (Text-to-Speech - Fish Audio S2.1):");
+        assertThat(promptWithSpeak.systemPrompt())
+                .contains("Narração em Áudio (Text-to-Speech - Fish Audio S2.1):")
+                .contains("NUNCA ria ou escreva risadas com \"kkk\"");
     }
 
     @Test

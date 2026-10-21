@@ -359,6 +359,12 @@ class ConversationServiceTest {
     }
 
     @Test
+    void normalizesSpokenLaughterForTts() {
+        assertThat(ConversationService.normalizeSpokenLaughter("Kkkkkk muito bom! kkk rsrsrs e ksksks"))
+                .isEqualTo("ha ha ha muito bom! ha ha ha ha ha ha e ha ha ha");
+    }
+
+    @Test
     void ttsFailureDegradesGracefullyAndDeliversText() {
         TtsPort failingTts = text -> { throw new RuntimeException("OpenRouter 503"); };
         AudioStorePort audioStore = (guildId, correlationId, data) -> "http://garage/fala.mp3";
