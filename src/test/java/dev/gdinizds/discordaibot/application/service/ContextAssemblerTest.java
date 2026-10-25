@@ -39,7 +39,7 @@ class ContextAssemblerTest {
                 "help"
         );
         Clock fixedClock = Clock.fixed(Instant.parse("2026-10-18T12:00:00Z"), ZoneId.of("UTC"));
-        assembler = new ContextAssembler(settings, fixedClock);
+        assembler = new ContextAssembler(settings, fixedClock, 10);
     }
 
     @Test
@@ -66,6 +66,30 @@ class ContextAssemblerTest {
                 .contains("NUNCA se envolva, debata ou responda sobre religião")
                 .contains("NENHUM tipo de desrespeito")
                 .contains("Sempre NEGUE e recuse prontamente qualquer pedido que envolva esses temas");
+    }
+
+    @Test
+    @DisplayName("Deve informar ao modelo o limite configurado de chamadas de ferramentas")
+    void shouldIncludeSequentialToolInvocationLimitInSystemPrompt() {
+        ConversationRequest request = new ConversationRequest(
+                "corr-tools",
+                TriggerType.SLASH,
+                new ConversationKey("guild-1", "chan-1", "user-1"),
+                "MyGuild",
+                "TestUser",
+                "Pesquise isso",
+                null,
+                List.of(),
+                new ReplyTarget.Channel("chan-1", "resp-tools"),
+                Instant.now(),
+                false
+        );
+
+        LlmPrompt prompt = assembler.assemble(request, List.of(), List.of(), List.of());
+
+        assertThat(prompt.systemPrompt())
+                .contains("no máximo 10 chamadas sequenciais de ferramentas por resposta")
+                .contains("evite repetir chamadas");
     }
 
     @Test

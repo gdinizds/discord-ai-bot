@@ -110,7 +110,7 @@ ai-bot:
     embedding-dimensions: 768
     temperature: ${OPENROUTER_TEMPERATURE:1.0}
     max-output-tokens: 1536
-    max-sequential-tool-invocations: 5
+    max-sequential-tool-invocations: 10
     chat-timeout: 330s
   tts:
     enabled: true
@@ -253,4 +253,3 @@ management:
         "[discord.aibot.latency]": true
       percentiles:
         "[discord.aibot.latency]": 0.5, 0.95, 0.99
-

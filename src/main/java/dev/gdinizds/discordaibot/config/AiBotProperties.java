@@ -72,7 +72,7 @@ public record AiBotProperties(
             @DefaultValue("768") @Positive int embeddingDimensions,
             @DefaultValue("1.0") double temperature,
             @DefaultValue("2048") @Positive int maxOutputTokens,
-            @DefaultValue("5") @Positive int maxSequentialToolInvocations,
+            @DefaultValue("10") @Positive int maxSequentialToolInvocations,
             @DefaultValue("330s") Duration chatTimeout,
             @DefaultValue("5s") Duration embeddingTimeout) {
 
@@ -175,4 +175,3 @@ public record AiBotProperties(
             @DefaultValue("25s") Duration timeout,
             @DefaultValue("1200") @Positive int maxChars) {}
 }
-

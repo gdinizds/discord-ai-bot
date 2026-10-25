@@ -407,7 +407,7 @@ class ConversationServiceTest {
                     if (att.fileName().startsWith("vazio")) return new byte[0];
                     return new byte[]{1, 2, 3};
                 },
-                countingLlm, new ContextAssembler(settings, clock), new MessageSplitter(1900, 5, FALLBACK),
+                countingLlm, new ContextAssembler(settings, clock, 10), new MessageSplitter(1900, 5, FALLBACK),
                 MetricsPort.NOOP, settings, clock, executor, sleeps::add, usage, tts, audioStore);
     }
 
@@ -452,4 +452,3 @@ class ConversationServiceTest {
         }
     }
 }
-

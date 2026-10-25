@@ -112,8 +112,8 @@ public class ApplicationConfig {
     }
 
     @Bean
-    public ContextAssembler contextAssembler(ConversationSettings settings, Clock clock) {
-        return new ContextAssembler(settings, clock);
+    public ContextAssembler contextAssembler(ConversationSettings settings, Clock clock, AiBotProperties p) {
+        return new ContextAssembler(settings, clock, p.openrouter().maxSequentialToolInvocations());
     }
 
     @Bean
@@ -151,4 +151,3 @@ public class ApplicationConfig {
                 usage, tts, audioStore);
     }
 }
-
