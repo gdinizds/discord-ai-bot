@@ -28,6 +28,37 @@ jobs:
         shell: bash
         run: ./gradlew test --console=plain 2>&1 | tee build-output.log
 
+      - name: Generate runtime SBOM
+        run: ./gradlew cyclonedxDirectBom --no-daemon --console=plain
+
+      - name: Report runtime dependency findings
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: sbom
+          scan-ref: build/reports/cyclonedx-direct/bom.json
+          version: v0.76.1
+          scanners: vuln
+          vuln-type: library
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '0'
+          format: table
+          output: trivy-java-all.txt
+
+      - name: Enforce HIGH/CRITICAL dependency policy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: sbom
+          scan-ref: build/reports/cyclonedx-direct/bom.json
+          version: v0.76.1
+          scanners: vuln
+          vuln-type: library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+          format: table
+          output: trivy-java-gate.txt
+
       - name: Annotate failures
         if: failure()
         shell: bash
@@ -76,3 +107,15 @@ jobs:
         with:
           name: test-results
           path: build/reports/tests/test
+
+      - name: Publish runtime SBOM and dependency scan
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: runtime-sbom-and-scan
+          path: |
+            build/reports/cyclonedx-direct/bom.json
+            build/reports/cyclonedx-direct/bom.xml
+            trivy-java-all.txt
+            trivy-java-gate.txt
+          if-no-files-found: warn

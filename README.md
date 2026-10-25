@@ -2,7 +2,7 @@
 
 [![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk)](https://openjdk.org/)
 [![GraalVM](https://img.shields.io/badge/GraalVM-Native%20Image%20JDK%2025-red?logo=graalvm)](https://www.graalvm.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.6-brightgreen?logo=springboot)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.9-brightgreen?logo=springboot)](https://spring.io/projects/spring-boot)
 [![LangChain4j](https://img.shields.io/badge/LangChain4j-1.20.1-blue)](https://github.com/langchain4j/langchain4j)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18%20%2B%20pgvector%20%2B%20pg__partman-blue?logo=postgresql)](https://github.com/pgvector/pgvector)
 [![Apache Kafka](https://img.shields.io/badge/Redpanda%20%2F%20Kafka-Event--Driven-black?logo=apachekafka)](https://redpanda.com/)
@@ -303,7 +303,7 @@ O serviço é compilado com **GraalVM Native Image (Oracle GFTC)**, gerando um b
 
 - **Inicialização Instantânea**: Inicializa e atinge prontidão total em menos de 1 segundo.
 - **Pegada de Memória Mínima**: Consumo de memória em repouso reduzido significativamente em comparação com a JVM tradicional.
-- **Contêiner Distroless**: Imagem base mínima sem shell ou utilitários desnecessários, reduzindo a superfície de ataque SAST/CVE a zero.
+- **Contêiner Distroless**: Runtime mínimo baseado em Debian 13, sem shell, gerenciador de pacotes ou ferramentas de build; a imagem é verificada no fluxo de release.
 - **Virtual Threads Integradas**: Concorrência leve habilitada nativamente (`spring.threads.virtual.enabled: true`) para operações assíncronas de I/O de rede e banco de dados.
 
 ---

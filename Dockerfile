@@ -3,33 +3,26 @@ WORKDIR /workspace
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
+# Keep the Oracle Linux native-image toolchain's OS packages current at build time.
+RUN microdnf -y upgrade && microdnf clean all
+
 COPY gradlew settings.gradle build.gradle ./
 COPY gradle gradle/
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon -q
-
 COPY src src/
-RUN ./gradlew nativeCompile --no-daemon -x test
+RUN chmod +x gradlew \
+    && ./gradlew nativeCompile --no-daemon -x test \
+    && rm -rf /root/.gradle
 
-FROM debian:bookworm-slim AS runtime
+# Provides glibc, libstdc++, zlib and CA certificates without a shell or package manager.
+FROM gcr.io/distroless/cc-debian13:nonroot AS runtime
 WORKDIR /app
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        libstdc++6 \
-        zlib1g \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd -r app \
-    && useradd -r -g app -u 1001 app
+COPY --from=build --chown=1001:1001 /workspace/build/native/nativeCompile/discord-ai-bot /app/discord-ai-bot
 
-COPY --from=build --chown=app:app /workspace/build/native/nativeCompile/discord-ai-bot /app/discord-ai-bot
-RUN chmod +x /app/discord-ai-bot
-
-USER app
+USER 1001:1001
 
 EXPOSE 8080
 
 ENTRYPOINT ["/app/discord-ai-bot", "-XX:MaximumHeapSizePercent=50"]
-
-
