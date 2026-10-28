@@ -44,6 +44,7 @@ dependencyManagement {
         // Kafka resolves this vulnerable LZ4 fork transitively; no imported BOM fixes it yet.
         // 1.11.4 includes the OSV fixes for CVE-2026-106449..CVE-2026-106453 and CVE-2026-59949.
         dependency 'at.yawk.lz4:lz4-java:1.11.4'
+        dependency 'org.xerial.snappy:snappy-java:1.1.10.9'
     }
 }
 

@@ -155,9 +155,13 @@ class ConversationFlowIT extends IntegrationTest {
     @Test
     void pngFromGarageReachesTheModelAsImage() {
         String key = GUILD_ID + "/" + UUID.randomUUID() + "/print.png";
+        byte[] minimalPng = new byte[]{
+                (byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n',
+                0, 0, 0, 0, 'I', 'E', 'N', 'D', (byte) 0xAE, 0x42, 0x60, (byte) 0x82
+        };
         try (S3Client s3 = TestContainers.s3()) {
             s3.putObject(b -> b.bucket(TestContainers.BUCKET).key(key),
-                    RequestBody.fromBytes(new byte[]{(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}));
+                    RequestBody.fromBytes(minimalPng));
         }
         String url = TestContainers.s3Url() + "/" + TestContainers.BUCKET + "/" + key;
         String payload = event("dot-ia").replaceFirst("\"attachments\":\\[[^\\]]*\\]", "\"attachments\":[\"" + url + "\"]");
