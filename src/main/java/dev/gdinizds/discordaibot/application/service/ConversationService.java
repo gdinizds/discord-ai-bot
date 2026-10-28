@@ -327,6 +327,10 @@ public class ConversationService implements HandleConversationUseCase {
             return LoadedAttachment.ignored(att,
                     "arquivo de texto maior que " + settings.textAttachmentMaxBytes() / 1024 + " KB");
         }
+        if (att.kind() == MediaKind.IMAGE && !ImageIntegrityValidator.isComplete(data)) {
+            log.warn("Attachment ignored, image file is corrupted or truncated: {}", att.fileName());
+            return LoadedAttachment.ignored(att, "arquivo corrompido ou incompleto");
+        }
         return LoadedAttachment.ok(att, data);
     }
 

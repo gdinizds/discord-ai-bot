@@ -405,7 +405,7 @@ class ConversationServiceTest {
                 att -> {
                     if (att.fileName().startsWith("erro")) throw new IllegalStateException("garage down");
                     if (att.fileName().startsWith("vazio")) return new byte[0];
-                    return new byte[]{1, 2, 3};
+                    return new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0, 'I', 'E', 'N', 'D', (byte) 0xAE, 0x42, 0x60, (byte) 0x82};
                 },
                 countingLlm, new ContextAssembler(settings, clock, 10), new MessageSplitter(1900, 5, FALLBACK),
                 MetricsPort.NOOP, settings, clock, executor, sleeps::add, usage, tts, audioStore);
