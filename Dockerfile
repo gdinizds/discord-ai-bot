@@ -4,7 +4,7 @@ ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
 # Keep the Oracle Linux native-image toolchain's OS packages current at build time.
-RUN microdnf -y upgrade && microdnf clean all
+RUN microdnf -y --nobest upgrade && microdnf clean all
 
 COPY gradlew settings.gradle build.gradle ./
 COPY gradle gradle/
