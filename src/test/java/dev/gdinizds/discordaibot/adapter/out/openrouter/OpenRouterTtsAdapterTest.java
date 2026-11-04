@@ -57,7 +57,7 @@ class OpenRouterTtsAdapterTest {
 
         var properties = new AiBotProperties(null, null, null, null, null, null,
                 new AiBotProperties.OpenRouter("sk-or-test-key", wireMock.baseUrl(), "google/gemini-3.5-flash-lite", null,
-                        "google/gemini-embedding-001", 768, 1.0, 1024, 5, Duration.ofSeconds(10), Duration.ofSeconds(5)),
+                        "google/gemini-embedding-001", 768, 1.0, 1024, 5, true, Duration.ofSeconds(10), Duration.ofSeconds(5)),
                 null, null, null, null, null, null, null, null,
                 new AiBotProperties.Tts(true, "fish-audio/s2.1-pro-free:free", "24522123b5804bf691a8450d9187f03e",
                         Duration.ofSeconds(5), 1200));
@@ -82,7 +82,7 @@ class OpenRouterTtsAdapterTest {
     void throwsIfApiKeyIsMissing() {
         var properties = new AiBotProperties(null, null, null, null, null, null,
                 new AiBotProperties.OpenRouter("", wireMock.baseUrl(), "google/gemini-3.5-flash-lite", null,
-                        "google/gemini-embedding-001", 768, 1.0, 1024, 5, Duration.ofSeconds(10), Duration.ofSeconds(5)),
+                        "google/gemini-embedding-001", 768, 1.0, 1024, 5, true, Duration.ofSeconds(10), Duration.ofSeconds(5)),
                 null, null, null, null, null, null, null, null,
                 new AiBotProperties.Tts(true, "fish-audio/s2.1-pro-free:free", "24522123b5804bf691a8450d9187f03e",
                         Duration.ofSeconds(5), 1200));

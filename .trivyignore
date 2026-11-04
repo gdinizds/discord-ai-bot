@@ -1,0 +1,2 @@
+# Build-stage toolchain dependency in Oracle GraalVM 25 (svm-wasm-guava.jar), not in runtime image
+CVE-2026-102554

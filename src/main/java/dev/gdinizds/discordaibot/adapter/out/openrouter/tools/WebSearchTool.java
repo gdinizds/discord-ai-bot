@@ -23,9 +23,10 @@ public class WebSearchTool {
     }
 
     @Tool(name = "web_search", value = """
-            Busca na web. Use para fatos atuais ou que mudam com o tempo: notícias, preços, versões de \
-            software, resultados de jogos, eventos recentes. Não use para conhecimento geral estável, \
-            conversa ou opinião. Cite as URLs usadas na resposta.""")
+            Busca na web via SearXNG. Use para fatos atuais ou que mudam com o tempo: notícias, preços, versões de \
+            software, especificações de hardware, eventos recentes. Retorna títulos, URLs e resumos. \
+            Se precisar do conteúdo aprofundado ou de detalhes técnicos de algum link retornado, \
+            use a ferramenta web_fetch na URL correspondente. Cite as URLs usadas na resposta.""")
     public String webSearch(@P("termos da busca, curtos e objetivos") String query,
                             @P(value = "quantidade de resultados, de 1 a 5", required = false) Integer limit) {
         int n = limit == null ? 3 : Math.clamp(limit, 1, 5);

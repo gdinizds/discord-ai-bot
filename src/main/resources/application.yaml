@@ -111,6 +111,7 @@ ai-bot:
     temperature: ${OPENROUTER_TEMPERATURE:1.0}
     max-output-tokens: 1536
     max-sequential-tool-invocations: 10
+    web-fetch-enabled: ${OPENROUTER_WEB_FETCH_ENABLED:true}
     chat-timeout: 330s
   tts:
     enabled: true

@@ -90,6 +90,7 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: false
+          trivyignores: .trivyignore
           exit-code: '1'
           format: table
           output: trivy-builder-gate.txt
@@ -128,6 +129,7 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: false
+          trivyignores: .trivyignore
           exit-code: '1'
           format: table
           output: trivy-image-gate.txt

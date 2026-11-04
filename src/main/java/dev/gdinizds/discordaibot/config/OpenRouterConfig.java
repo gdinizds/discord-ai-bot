@@ -35,7 +35,7 @@ public class OpenRouterConfig {
 
     private static ChatModel chatModel(AiBotProperties properties, String name) {
         var openrouter = properties.openrouter();
-        return OpenAiChatModel.builder()
+        var builder = OpenAiChatModel.builder()
                 .baseUrl(openrouter.baseUrl())
                 .apiKey(openrouter.requireApiKey())
                 .modelName(name)
@@ -43,8 +43,11 @@ public class OpenRouterConfig {
                 .maxTokens(openrouter.maxOutputTokens())
                 .timeout(openrouter.chatTimeout())
                 .customHeaders(OPENROUTER_HEADERS)
-                .maxRetries(0)
-                .build();
+                .maxRetries(0);
+        if (openrouter.webFetchEnabled()) {
+            builder.customParameters(Map.of("tools", java.util.List.of(Map.of("type", "openrouter:web_fetch"))));
+        }
+        return builder.build();
     }
 
     @Bean

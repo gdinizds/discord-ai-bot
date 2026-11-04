@@ -36,7 +36,8 @@ public class FailoverLlmAdapter implements LlmPort {
         for (Throwable t = error; t != null; t = t.getCause()) {
             if (t instanceof ServiceUnavailableException
                     || t instanceof RateLimitedException
-                    || t instanceof CallNotPermittedException) {
+                    || t instanceof CallNotPermittedException
+                    || t instanceof EmptyResponseException) {
                 return true;
             }
             if (t.getCause() == t) break;

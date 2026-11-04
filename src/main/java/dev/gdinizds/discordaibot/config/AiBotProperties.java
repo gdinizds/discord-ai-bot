@@ -73,6 +73,7 @@ public record AiBotProperties(
             @DefaultValue("1.0") double temperature,
             @DefaultValue("2048") @Positive int maxOutputTokens,
             @DefaultValue("10") @Positive int maxSequentialToolInvocations,
+            @DefaultValue("true") boolean webFetchEnabled,
             @DefaultValue("330s") Duration chatTimeout,
             @DefaultValue("5s") Duration embeddingTimeout) {
 

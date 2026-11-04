@@ -49,11 +49,16 @@ public class OpenRouterLlmAdapter implements LlmPort {
         AssistantFactory.Session session = assistants.create(prompt.key(), prompt.correlationId(), memory);
         Result<String> result = session.assistant().chat(currentContents(prompt));
 
+        String content = result.content();
+        if (content == null || content.isBlank()) {
+            throw new EmptyResponseException("LLM returned empty or blank content (model=" + model + ")");
+        }
+
         List<String> toolsUsed = result.toolExecutions() == null ? List.of() : result.toolExecutions().stream()
                 .map(execution -> execution.request().name())
                 .distinct()
                 .toList();
-        return new AiAnswer(Objects.requireNonNullElse(result.content(), ""), toolsUsed, usage(result), false,
+        return new AiAnswer(content, toolsUsed, usage(result), false,
                 session.images().get(), model);
     }
 
