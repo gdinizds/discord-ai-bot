@@ -10,6 +10,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -44,8 +46,18 @@ public class OpenRouterConfig {
                 .timeout(openrouter.chatTimeout())
                 .customHeaders(OPENROUTER_HEADERS)
                 .maxRetries(0);
+        List<Map<String, Object>> serverTools = new ArrayList<>();
         if (openrouter.webFetchEnabled()) {
-            builder.customParameters(Map.of("tools", java.util.List.of(Map.of("type", "openrouter:web_fetch"))));
+            serverTools.add(Map.of("type", "openrouter:web_fetch"));
+        }
+        if (openrouter.advisorEnabled() && openrouter.advisorModel() != null && !openrouter.advisorModel().isBlank()) {
+            serverTools.add(Map.of(
+                    "type", "openrouter:advisor",
+                    "parameters", Map.of("model", openrouter.advisorModel())
+            ));
+        }
+        if (!serverTools.isEmpty()) {
+            builder.customParameters(Map.of("tools", serverTools));
         }
         return builder.build();
     }

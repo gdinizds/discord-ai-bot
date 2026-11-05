@@ -94,6 +94,21 @@ public class GarageImageStore implements ImageStorePort {
         return new OutboundImage(endpoint + "/" + bucket + "/" + key, fileName, description(hit));
     }
 
+    public OutboundImage storeDirect(String guildId, String correlationId, int index,
+                                     byte[] data, ImageFormat format, String description) {
+        String fileName = "imagem-" + index + "." + format.extension();
+        String key = keyPrefix + "/" + guildId + "/" + correlationId + "/" + fileName;
+        resilience.run(INSTANCE, () -> s3.putObject(PutObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .contentType(format.mimeType())
+                        .contentLength((long) data.length)
+                        .build(),
+                RequestBody.fromBytes(data)));
+        String desc = description == null ? null : (description.length() <= MAX_DESCRIPTION ? description : description.substring(0, MAX_DESCRIPTION - 1) + "…");
+        return new OutboundImage(endpoint + "/" + bucket + "/" + key, fileName, desc);
+    }
+
     static String description(ImageHit hit) {
         String text = hit.title() == null ? "" : hit.title().replaceAll("\\s+", " ").strip();
         if (text.isEmpty()) return null;

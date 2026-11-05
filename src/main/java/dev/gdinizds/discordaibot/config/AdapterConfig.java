@@ -8,6 +8,7 @@ import dev.gdinizds.discordaibot.adapter.out.openrouter.AssistantFactory;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.AssistantTools;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.FailoverLlmAdapter;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.OpenRouterEmbeddingAdapter;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.OpenRouterImageGeneratorAdapter;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.OpenRouterLlmAdapter;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.ResilientChatModel;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.ToolSupport;
@@ -181,15 +182,23 @@ public class AdapterConfig {
     }
 
     @Bean
+    public OpenRouterImageGeneratorAdapter imageGenerator(RestClient.Builder builder, ObjectMapper om, Resilience r, AiBotProperties p) {
+        return new OpenRouterImageGeneratorAdapter(builder, om, r, p);
+    }
+
+    @Bean
     public AssistantFactory assistantFactory(ChatModel chatModel, Resilience r, SearxngClient webSearch,
                                              OpenMeteoClient weather, WikipediaClient encyclopedia,
                                              ManageMemoryUseCase memories, GarageImageStore imageStore,
                                              ToolSupport toolSupport, AiBotProperties p,
                                              SafePageReader pages, JdbcChannelLog channelLog,
                                              AwesomeApiClient exchangeRates, ManageRemindersUseCase reminders,
+                                             OpenRouterImageGeneratorAdapter imageGenerator,
                                              Clock clock) {
         var extras = new AssistantTools(pages, p.channelLog().enabled() ? channelLog : null, exchangeRates,
-                p.reminders().enabled() ? reminders : null, ZoneId.of(p.conversation().zone()), clock);
+                p.reminders().enabled() ? reminders : null,
+                p.openrouter().imageGenerateEnabled() ? imageGenerator : null,
+                ZoneId.of(p.conversation().zone()), clock);
         return new AssistantFactory(new ResilientChatModel(chatModel, r), webSearch, weather, encyclopedia,
                 memories, webSearch, imageStore, toolSupport, p, extras);
     }

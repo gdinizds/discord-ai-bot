@@ -155,7 +155,8 @@ class OpenRouterLlmAdapterTest {
         var support = new ToolSupport(MetricsPort.NOOP, executor, 4000);
         var properties = new AiBotProperties(null, null, null, null, null, null,
                 new AiBotProperties.OpenRouter("", "https://openrouter.ai/api/v1", "google/gemini-3.5-flash-lite", null,
-                        "google/gemini-embedding-001", 768, 0.7, 2048, 5, true,
+                        "google/gemini-embedding-001", 768, 0.7, 2048, 5, true, true, "openai/gpt-6.1-sol", true,
+                        "bytedance-seed/seedream-5-0-flash", Duration.ofSeconds(60),
                         Duration.ofSeconds(75), Duration.ofSeconds(5)),
                 new AiBotProperties.Tools("http://searxng", "http://geo", "http://forecast", "http://{lang}.wiki",
                         "ua", 4000, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1),

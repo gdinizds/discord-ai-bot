@@ -74,6 +74,11 @@ public record AiBotProperties(
             @DefaultValue("2048") @Positive int maxOutputTokens,
             @DefaultValue("10") @Positive int maxSequentialToolInvocations,
             @DefaultValue("true") boolean webFetchEnabled,
+            @DefaultValue("true") boolean advisorEnabled,
+            @DefaultValue("openai/gpt-6.1-sol") String advisorModel,
+            @DefaultValue("true") boolean imageGenerateEnabled,
+            @DefaultValue("bytedance-seed/seedream-5-0-flash") String imageModel,
+            @DefaultValue("60s") Duration imageGenerateTimeout,
             @DefaultValue("330s") Duration chatTimeout,
             @DefaultValue("5s") Duration embeddingTimeout) {
 

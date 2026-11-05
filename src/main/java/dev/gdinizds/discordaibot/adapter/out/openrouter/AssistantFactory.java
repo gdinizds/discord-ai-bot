@@ -1,8 +1,10 @@
 package dev.gdinizds.discordaibot.adapter.out.openrouter;
 
+import dev.gdinizds.discordaibot.adapter.out.image.GarageImageStore;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.CalculatorTool;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.ChannelContextTool;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.ExchangeRateTool;
+import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.ImageGenerateTool;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.ImageSearchTool;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.ReadUrlTool;
 import dev.gdinizds.discordaibot.adapter.out.openrouter.tools.ReminderTool;
@@ -122,12 +124,23 @@ public class AssistantFactory {
             sessionTools.add(new ReminderTool(extras.reminders(), toolSupport, tools.reminderTimeout(),
                     key.guildId(), key.channelId(), key.userId(), correlationId, extras.zone()));
         }
+        List<OutboundImage> generatedImages = new java.util.concurrent.CopyOnWriteArrayList<>();
+        if (extras.imageGenerator() != null && imageStore instanceof GarageImageStore garageStore) {
+            sessionTools.add(new ImageGenerateTool(extras.imageGenerator(), garageStore, toolSupport,
+                    images.searchTimeout(), key.guildId(), correlationId, images.maxPerAnswer(),
+                    () -> imageTool.attached().size() + generatedImages.size(),
+                    generatedImages::add));
+        }
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .chatMemory(memory)
                 .tools(sessionTools)
                 .maxSequentialToolsInvocations(maxSequentialToolInvocations)
                 .build();
-        return new Session(assistant, imageTool::attached);
+        return new Session(assistant, () -> {
+            List<OutboundImage> combined = new ArrayList<>(imageTool.attached());
+            combined.addAll(generatedImages);
+            return List.copyOf(combined);
+        });
     }
 }

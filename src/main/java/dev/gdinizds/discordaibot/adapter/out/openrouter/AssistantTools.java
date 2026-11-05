@@ -3,6 +3,7 @@ package dev.gdinizds.discordaibot.adapter.out.openrouter;
 import dev.gdinizds.discordaibot.application.port.in.ManageRemindersUseCase;
 import dev.gdinizds.discordaibot.application.port.out.ChannelLogPort;
 import dev.gdinizds.discordaibot.application.port.out.ExchangeRatePort;
+import dev.gdinizds.discordaibot.application.port.out.ImageGeneratePort;
 import dev.gdinizds.discordaibot.application.port.out.PageReaderPort;
 
 import java.time.Clock;
@@ -13,10 +14,16 @@ public record AssistantTools(
         ChannelLogPort channelLog,
         ExchangeRatePort exchangeRates,
         ManageRemindersUseCase reminders,
+        ImageGeneratePort imageGenerator,
         ZoneId zone,
         Clock clock) {
 
+    public AssistantTools(PageReaderPort pages, ChannelLogPort channelLog, ExchangeRatePort exchangeRates,
+                          ManageRemindersUseCase reminders, ZoneId zone, Clock clock) {
+        this(pages, channelLog, exchangeRates, reminders, null, zone, clock);
+    }
+
     public static AssistantTools none() {
-        return new AssistantTools(null, null, null, null, ZoneId.of("America/Sao_Paulo"), Clock.systemUTC());
+        return new AssistantTools(null, null, null, null, null, ZoneId.of("America/Sao_Paulo"), Clock.systemUTC());
     }
 }

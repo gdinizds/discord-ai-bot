@@ -112,6 +112,11 @@ ai-bot:
     max-output-tokens: 1536
     max-sequential-tool-invocations: 10
     web-fetch-enabled: ${OPENROUTER_WEB_FETCH_ENABLED:true}
+    advisor-enabled: ${OPENROUTER_ADVISOR_ENABLED:true}
+    advisor-model: ${OPENROUTER_ADVISOR_MODEL:openai/gpt-6.1-sol}
+    image-generate-enabled: ${OPENROUTER_IMAGE_GENERATE_ENABLED:true}
+    image-model: ${OPENROUTER_IMAGE_MODEL:bytedance-seed/seedream-5-0-flash}
+    image-generate-timeout: 60s
     chat-timeout: 330s
   tts:
     enabled: true
@@ -167,6 +172,10 @@ resilience4j:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
+      openrouter-image:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
       searxng:    { base-config: http-tool, wait-duration-in-open-state: 30s }
       open-meteo: { base-config: http-tool, wait-duration-in-open-state: 60s }
       wikipedia:  { base-config: http-tool, wait-duration-in-open-state: 60s }
@@ -187,6 +196,7 @@ resilience4j:
       openrouter-chat-fallback: { timeout-duration: 330s, cancel-running-future: true }
       openrouter-embedding:     { timeout-duration: 5s,  cancel-running-future: true }
       openrouter-tts:           { timeout-duration: 25s, cancel-running-future: true }
+      openrouter-image:         { timeout-duration: 60s, cancel-running-future: true }
       searxng:          { timeout-duration: 5s,  cancel-running-future: true }
       open-meteo:       { timeout-duration: 4s,  cancel-running-future: true }
       wikipedia:        { timeout-duration: 4s,  cancel-running-future: true }
