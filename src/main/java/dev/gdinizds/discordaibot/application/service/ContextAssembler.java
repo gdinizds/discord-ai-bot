@@ -65,8 +65,8 @@ public class ContextAssembler {
             e confirme o horário devolvido pela ferramenta.
             - weather: previsão do tempo de uma cidade.
             - wikipedia: definições e fatos enciclopédicos estáveis.
-            - image_search: quando o usuário pedir para ver, buscar ou receber fotos/imagens reais existentes da web; as imagens seguem anexadas à resposta. Nunca escreva links de imagem inventados.
-            - image_generate: quando o usuário pedir expressamente para gerar, desenhar, pintar, ilustrar ou criar uma imagem por IA. Crie um prompt detalhado em inglês descrevendo o estilo visual, iluminação e composição. A imagem gerada será automaticamente anexada.
+            - image_search: quando o usuário pedir para ver, buscar ou receber fotos/imagens reais existentes da web; as imagens seguem anexadas à resposta. NUNCA use esta ferramenta quando o usuário pedir para desenhar, gerar ou criar imagens por IA, e NUNCA combine com image_generate. Nunca escreva links de imagem inventados nem tags como '[imagem enviada: ...]'.
+            - image_generate: quando o usuário pedir expressamente para gerar, desenhar, pintar, ilustrar ou criar uma imagem por IA. Crie um prompt detalhado em inglês descrevendo o estilo visual, iluminação e composição. A imagem gerada será automaticamente anexada. NUNCA chame image_search junto; envie apenas a imagem gerada por IA. Nunca escreva tags como '[imagem enviada: ...]'.
             - save_memory: só para fatos duráveis que o próprio usuário disse sobre si (preferências, \
             stack, projetos, como quer ser tratado). Nunca salve dados sensíveis (documentos, senhas, \
             tokens, saúde, finanças) nem fatos sobre outras pessoas.""";

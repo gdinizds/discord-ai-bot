@@ -99,8 +99,9 @@ public class AssistantFactory {
     }
 
     public Session create(ConversationKey key, String correlationId, ChatMemory memory) {
+        List<OutboundImage> generatedImages = new java.util.concurrent.CopyOnWriteArrayList<>();
         var imageTool = new ImageSearchTool(imageSearch, imageStore, toolSupport, images.searchTimeout(),
-                key.guildId(), correlationId, images.maxPerAnswer());
+                key.guildId(), correlationId, images.maxPerAnswer(), () -> !generatedImages.isEmpty());
         List<Object> sessionTools = new ArrayList<>(List.of(
                 new WebSearchTool(webSearch, toolSupport, tools.searxngTimeout()),
                 new WeatherTool(weather, toolSupport, tools.openMeteoTimeout()),
@@ -124,11 +125,11 @@ public class AssistantFactory {
             sessionTools.add(new ReminderTool(extras.reminders(), toolSupport, tools.reminderTimeout(),
                     key.guildId(), key.channelId(), key.userId(), correlationId, extras.zone()));
         }
-        List<OutboundImage> generatedImages = new java.util.concurrent.CopyOnWriteArrayList<>();
         if (extras.imageGenerator() != null && imageStore instanceof GarageImageStore garageStore) {
             sessionTools.add(new ImageGenerateTool(extras.imageGenerator(), garageStore, toolSupport,
                     images.searchTimeout(), key.guildId(), correlationId, images.maxPerAnswer(),
                     () -> imageTool.attached().size() + generatedImages.size(),
+                    () -> !imageTool.attached().isEmpty(),
                     generatedImages::add));
         }
         Assistant assistant = AiServices.builder(Assistant.class)

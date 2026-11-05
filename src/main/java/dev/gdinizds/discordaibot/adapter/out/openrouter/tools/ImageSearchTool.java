@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BooleanSupplier;
 
 public class ImageSearchTool {
 
@@ -29,10 +30,16 @@ public class ImageSearchTool {
     private final String guildId;
     private final String correlationId;
     private final int maxImages;
+    private final BooleanSupplier hasGeneratedImages;
     private final List<OutboundImage> attached = new CopyOnWriteArrayList<>();
 
     public ImageSearchTool(ImageSearchPort search, ImageStorePort store, ToolSupport support, Duration timeout,
                            String guildId, String correlationId, int maxImages) {
+        this(search, store, support, timeout, guildId, correlationId, maxImages, () -> false);
+    }
+
+    public ImageSearchTool(ImageSearchPort search, ImageStorePort store, ToolSupport support, Duration timeout,
+                           String guildId, String correlationId, int maxImages, BooleanSupplier hasGeneratedImages) {
         this.search = search;
         this.store = store;
         this.support = support;
@@ -40,15 +47,20 @@ public class ImageSearchTool {
         this.guildId = guildId;
         this.correlationId = correlationId;
         this.maxImages = maxImages;
+        this.hasGeneratedImages = hasGeneratedImages;
     }
 
     @Tool(name = "image_search", value = """
             Busca imagens na web e as anexa à sua resposta no Discord. Use quando o usuário pedir para ver, \
-            mostrar, mandar ou buscar uma imagem, foto, desenho, mapa ou exemplo visual. Não use quando texto \
-            basta. As imagens encontradas já seguem anexadas; na resposta, diga em uma frase o que foi enviado \
-            e cite as fontes. Nunca escreva links de imagem inventados.""")
+            mostrar, mandar ou buscar uma imagem, foto, desenho, mapa ou exemplo visual real existente na web. \
+            Não use quando texto basta. NUNCA use se o usuário pediu para gerar, desenhar ou criar imagens por IA \
+            e NUNCA combine com image_generate. As imagens encontradas já seguem anexadas; na resposta, diga em \
+            uma frase o que foi enviado e cite as fontes. Nunca escreva links de imagem inventados.""")
     public String imageSearch(@P("o que buscar, em poucas palavras") String query,
                               @P(value = "quantidade de imagens, de 1 a 4", required = false) Integer count) {
+        if (hasGeneratedImages.getAsBoolean()) {
+            return "Uma imagem já foi gerada por IA nesta resposta. Não busque imagens adicionais na web.";
+        }
         int remaining = maxImages - attached.size();
         if (remaining <= 0) {
             return "Limite de " + maxImages + " imagens por resposta atingido.";

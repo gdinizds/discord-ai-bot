@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 
@@ -28,11 +29,13 @@ public class ImageGenerateTool {
     private final String correlationId;
     private final int maxImages;
     private final IntSupplier currentAttachedCount;
+    private final BooleanSupplier hasSearchedImages;
     private final Consumer<OutboundImage> onImageAttached;
 
     public ImageGenerateTool(ImageGeneratePort generator, GarageImageStore store, ToolSupport support,
                              Duration timeout, String guildId, String correlationId, int maxImages,
-                             IntSupplier currentAttachedCount, Consumer<OutboundImage> onImageAttached) {
+                             IntSupplier currentAttachedCount, BooleanSupplier hasSearchedImages,
+                             Consumer<OutboundImage> onImageAttached) {
         this.generator = generator;
         this.store = store;
         this.support = support;
@@ -41,6 +44,7 @@ public class ImageGenerateTool {
         this.correlationId = correlationId;
         this.maxImages = maxImages;
         this.currentAttachedCount = currentAttachedCount;
+        this.hasSearchedImages = hasSearchedImages;
         this.onImageAttached = onImageAttached;
     }
 
@@ -48,8 +52,12 @@ public class ImageGenerateTool {
             Gera uma imagem original por inteligência artificial a partir de uma descrição detalhada em texto e \
             a anexa diretamente à sua resposta no Discord. Use OBRIGATORIAMENTE quando o usuário pedir para gerar, \
             desenhar, pintar, ilustrar ou criar uma imagem artística, em vez de buscar fotos reais da web. \
+            NUNCA combine esta ferramenta com image_search na mesma resposta. \
             Escreva um prompt em inglês descritivo e rico em detalhes visuais para obter o melhor resultado do gerador.""")
     public String generateImage(@P("descrição visual detalhada da imagem a ser gerada (prefira em inglês para melhor fidelidade)") String prompt) {
+        if (hasSearchedImages.getAsBoolean()) {
+            return "Imagens da web já foram anexadas nesta resposta. Não gere imagens por IA juntas.";
+        }
         int currentCount = currentAttachedCount.getAsInt();
         if (currentCount >= maxImages) {
             return "Limite de " + maxImages + " imagens por resposta atingido.";
@@ -61,7 +69,7 @@ public class ImageGenerateTool {
             int nextIndex = currentAttachedCount.getAsInt() + 1;
             OutboundImage outbound = store.storeDirect(guildId, correlationId, nextIndex, bytes, format, prompt);
             onImageAttached.accept(outbound);
-            return "Imagem gerada com sucesso e anexada à resposta.";
+            return "Imagem gerada com sucesso e anexada à resposta. Não busque nem gere mais imagens.";
         });
     }
 }
