@@ -109,7 +109,10 @@ public class InboundEventConsumer implements DisposableBean {
             return;
         }
         parse(payload).ifPresentOrElse(
-                event -> dispatch(mapper.fromDotCommand(event), ack),
+                event -> {
+                    record(event);
+                    dispatch(mapper.fromDotCommand(event), ack);
+                },
                 () -> ackIfPresent(ack));
     }
 

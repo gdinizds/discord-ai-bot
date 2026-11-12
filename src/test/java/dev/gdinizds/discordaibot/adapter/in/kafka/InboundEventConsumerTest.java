@@ -193,4 +193,23 @@ class InboundEventConsumerTest {
         verify(ack).acknowledge();
         assertThat(consumer.inFlight()).isZero();
     }
+
+    @Test
+    void recordsDotCommandIntoChannelLog() {
+        var consumer = consumer(4);
+        var ack = mock(Acknowledgment.class);
+
+        consumer.onMessageCommand("""
+                {"eventType":"MESSAGE_COMMAND","correlationId":"0192a3b4-0000-7000-8000-000000000020",
+                 "guild":{"id":"900000000000000001","name":"HotBCT"},"channelId":"800000000000000001",
+                 "user":{"id":"700000000000000002","username":"davi"},"messageId":"500000000000000020",
+                 "rawPayload":{"content":"e aí bot"}}
+                """, "ia", ack);
+        release.countDown();
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> !recorded.isEmpty());
+        assertThat(recorded).hasSize(1);
+        assertThat(recorded.get(0).username()).isEqualTo("davi");
+        assertThat(recorded.get(0).content()).isEqualTo("e aí bot");
+    }
 }
