@@ -115,7 +115,7 @@ public class AssistantFactory {
         }
         if (extras.channelLog() != null && key.channelId() != null) {
             sessionTools.add(new ChannelContextTool(extras.channelLog(), toolSupport, tools.channelContextTimeout(),
-                    key.channelId(), extras.zone(), extras.clock(), tools.channelContextMaxChars()));
+                    key.guildId(), key.channelId(), extras.zone(), extras.clock(), tools.channelContextMaxChars()));
         }
         if (extras.exchangeRates() != null) {
             sessionTools.add(new ExchangeRateTool(extras.exchangeRates(), toolSupport, tools.exchangeRateTimeout(),

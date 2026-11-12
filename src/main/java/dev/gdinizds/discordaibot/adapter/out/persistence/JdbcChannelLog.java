@@ -13,7 +13,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class JdbcChannelLog implements ChannelLogPort {
 
@@ -26,14 +29,6 @@ public class JdbcChannelLog implements ChannelLogPort {
             ON CONFLICT (message_id, created_at) DO NOTHING
             """;
 
-    private static final String RECENT = """
-            SELECT guild_id, channel_id, message_id, user_id, username, content, created_at
-              FROM ai_bot.channel_messages
-             WHERE channel_id = :channelId
-               AND created_at >= :since
-             ORDER BY created_at DESC, message_id DESC
-             LIMIT :limit
-            """;
 
     private final JdbcClient jdbc;
     private final Resilience resilience;
@@ -61,25 +56,95 @@ public class JdbcChannelLog implements ChannelLogPort {
     }
 
     @Override
-    public List<ChannelMessage> recent(String channelId, Instant since, int limit) {
+    public List<ChannelMessage> search(ChannelQuery query) {
         Instant floor = clock.instant().minus(retention);
-        Instant from = since == null || since.isBefore(floor) ? floor : since;
-        List<ChannelMessage> newestFirst = resilience.call(Instances.DATABASE, () -> jdbc.sql(RECENT)
-                .param("channelId", Ids.snowflake(channelId))
-                .param("since", Timestamp.from(from))
-                .param("limit", limit)
-                .query((rs, i) -> new ChannelMessage(
-                        rs.getObject("guild_id") == null ? null : Long.toString(rs.getLong("guild_id")),
-                        Long.toString(rs.getLong("channel_id")),
-                        Long.toString(rs.getLong("message_id")),
-                        Long.toString(rs.getLong("user_id")),
-                        rs.getString("username"),
-                        rs.getString("content"),
-                        rs.getTimestamp("created_at").toInstant()))
-                .list());
+        Instant from = query.since() == null || query.since().isBefore(floor) ? floor : query.since();
+
+        StringBuilder sql = new StringBuilder("""
+                SELECT guild_id, channel_id, message_id, user_id, username, content, created_at
+                  FROM ai_bot.channel_messages
+                 WHERE created_at >= :since
+                """);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("since", Timestamp.from(from));
+
+        if (query.serverWide() && query.guildId() != null && !query.guildId().isBlank()) {
+            sql.append("   AND guild_id = :guildId\n");
+            params.put("guildId", Ids.snowflake(query.guildId()));
+        } else if (query.channelId() != null && !query.channelId().isBlank()) {
+            sql.append("   AND channel_id = :channelId\n");
+            params.put("channelId", Ids.snowflake(query.channelId()));
+        }
+
+        if (query.users() != null && !query.users().isEmpty()) {
+            List<Long> snowflakeIds = new ArrayList<>();
+            List<String> usernamePatterns = new ArrayList<>();
+            for (String raw : query.users()) {
+                if (raw == null) continue;
+                String cleaned = raw.strip().replaceAll("^<@!?(\\d+)>$", "$1").replace("@", "").strip();
+                if (cleaned.isEmpty()) continue;
+                try {
+                    long id = Long.parseUnsignedLong(cleaned);
+                    if (id > 0) snowflakeIds.add(id);
+                } catch (NumberFormatException ignored) {}
+                usernamePatterns.add("%" + cleaned.toLowerCase(Locale.ROOT) + "%");
+            }
+
+            if (!snowflakeIds.isEmpty() || !usernamePatterns.isEmpty()) {
+                sql.append("   AND (");
+                boolean first = true;
+                if (!snowflakeIds.isEmpty()) {
+                    sql.append("user_id IN (:userIds)");
+                    params.put("userIds", snowflakeIds);
+                    first = false;
+                }
+                for (int i = 0; i < usernamePatterns.size(); i++) {
+                    if (!first) {
+                        sql.append(" OR ");
+                    }
+                    String paramName = "userPattern" + i;
+                    sql.append("LOWER(username) LIKE :").append(paramName);
+                    params.put(paramName, usernamePatterns.get(i));
+                    first = false;
+                }
+                sql.append(")\n");
+            }
+        }
+
+        if (query.query() != null && !query.query().isBlank()) {
+            sql.append("   AND content ILIKE :contentPattern\n");
+            params.put("contentPattern", "%" + query.query().strip() + "%");
+        }
+
+        sql.append(" ORDER BY created_at DESC, message_id DESC\n");
+        sql.append(" LIMIT :limit\n");
+        params.put("limit", Math.clamp(query.limit() <= 0 ? 30 : query.limit(), 1, 100));
+
+        List<ChannelMessage> newestFirst = resilience.call(Instances.DATABASE, () -> {
+            var client = jdbc.sql(sql.toString());
+            for (var entry : params.entrySet()) {
+                client.param(entry.getKey(), entry.getValue());
+            }
+            return client.query((rs, i) -> new ChannelMessage(
+                    rs.getObject("guild_id") == null ? null : Long.toString(rs.getLong("guild_id")),
+                    Long.toString(rs.getLong("channel_id")),
+                    Long.toString(rs.getLong("message_id")),
+                    Long.toString(rs.getLong("user_id")),
+                    rs.getString("username"),
+                    rs.getString("content"),
+                    rs.getTimestamp("created_at").toInstant()))
+                    .list();
+        });
+
         List<ChannelMessage> chronological = new ArrayList<>(newestFirst);
         Collections.reverse(chronological);
         return chronological;
+    }
+
+    @Override
+    public List<ChannelMessage> recent(String channelId, Instant since, int limit) {
+        return search(new ChannelQuery(null, channelId, false, List.of(), null, since, limit));
     }
 }
 

@@ -9,5 +9,25 @@ public interface ChannelLogPort {
 
     void append(ChannelMessage message);
 
-    List<ChannelMessage> recent(String channelId, Instant since, int limit);
+    default List<ChannelMessage> search(ChannelQuery query) {
+        return recent(query.channelId(), query.since(), query.limit());
+    }
+
+    default List<ChannelMessage> recent(String channelId, Instant since, int limit) {
+        return search(new ChannelQuery(null, channelId, false, List.of(), null, since, limit));
+    }
+
+    record ChannelQuery(
+            String guildId,
+            String channelId,
+            boolean serverWide,
+            List<String> users,
+            String query,
+            Instant since,
+            int limit
+    ) {
+        public ChannelQuery {
+            users = users == null ? List.of() : List.copyOf(users);
+        }
+    }
 }

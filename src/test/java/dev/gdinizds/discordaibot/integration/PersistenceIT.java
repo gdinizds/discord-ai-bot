@@ -39,7 +39,7 @@ class PersistenceIT extends IntegrationTest {
     void flywayAppliesAllMigrationsAndPartmanKeepsEightDays() {
         int applied = jdbc.sql("SELECT count(*) FROM ai_bot.flyway_schema_history WHERE success AND version IS NOT NULL")
                 .query(Integer.class).single();
-        assertThat(applied).isEqualTo(9);
+        assertThat(applied).isEqualTo(10);
 
         List<String> retention = jdbc.sql("""
                         SELECT retention FROM partman.part_config
@@ -137,6 +137,33 @@ class PersistenceIT extends IntegrationTest {
         var recent = channelLog.recent("777", base.minus(java.time.Duration.ofDays(5)), 3);
 
         assertThat(recent).extracting(ChannelMessage::content).containsExactly("mensagem 2", "mensagem 3", "mensagem 4");
+    }
+
+    @Test
+    void channelLogSearchesAcrossServerAndFiltersByUserAndQuery() {
+        var base = java.time.Instant.now().minusSeconds(100);
+        channelLog.append(new ChannelMessage("10", "777", "9501", "30", "davi", "jogo bom demais", base));
+        channelLog.append(new ChannelMessage("10", "778", "9502", "31", "azulre", "jogo legal", base.plusSeconds(10)));
+        channelLog.append(new ChannelMessage("10", "779", "9503", "30", "davi", "outro assunto", base.plusSeconds(20)));
+        channelLog.append(new ChannelMessage("20", "780", "9504", "30", "davi", "jogo em outro server", base.plusSeconds(30)));
+
+        // 1. Server-wide para guild 10, filtrando por usuário "davi"
+        var daviMessages = channelLog.search(new dev.gdinizds.discordaibot.application.port.out.ChannelLogPort.ChannelQuery(
+                "10", "777", true, List.of("davi"), null, base.minusSeconds(10), 10));
+        assertThat(daviMessages).extracting(ChannelMessage::content)
+                .containsExactly("jogo bom demais", "outro assunto");
+
+        // 2. Server-wide para guild 10, buscando query "jogo"
+        var gameMessages = channelLog.search(new dev.gdinizds.discordaibot.application.port.out.ChannelLogPort.ChannelQuery(
+                "10", "777", true, List.of(), "jogo", base.minusSeconds(10), 10));
+        assertThat(gameMessages).extracting(ChannelMessage::content)
+                .containsExactly("jogo bom demais", "jogo legal");
+
+        // 3. Filtrando por múltiplos usuários "davi, azulre"
+        var multiUserMessages = channelLog.search(new dev.gdinizds.discordaibot.application.port.out.ChannelLogPort.ChannelQuery(
+                "10", "777", true, List.of("davi", "azulre"), null, base.minusSeconds(10), 10));
+        assertThat(multiUserMessages).extracting(ChannelMessage::content)
+                .containsExactly("jogo bom demais", "jogo legal", "outro assunto");
     }
 
     @Test
