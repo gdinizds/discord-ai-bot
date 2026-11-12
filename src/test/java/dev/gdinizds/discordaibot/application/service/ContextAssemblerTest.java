@@ -125,10 +125,41 @@ class ContextAssemblerTest {
         LlmPrompt promptWithoutSpeak = assembler.assemble(withoutSpeak, List.of(), List.of(), List.of());
         LlmPrompt promptWithSpeak = assembler.assemble(withSpeak, List.of(), List.of(), List.of());
 
-        assertThat(promptWithoutSpeak.systemPrompt()).doesNotContain("Narração em Áudio (Text-to-Speech");
+        assertThat(promptWithoutSpeak.systemPrompt())
+                .doesNotContain("Narração em Áudio (Text-to-Speech")
+                .contains("Modo de Mensagem em Texto:")
+                .contains("NUNCA use marcadores de som, entonação ou emoção");
         assertThat(promptWithSpeak.systemPrompt())
                 .contains("Narração em Áudio (Text-to-Speech - Fish Audio S2.1):")
-                .contains("NUNCA ria ou escreva risadas com \"kkk\"");
+                .contains("NUNCA ria ou escreva risadas com \"kkk\"")
+                .contains("O usuário ativou o modo de voz (-falar ou comando com áudio)!")
+                .doesNotContain("Modo de Mensagem em Texto:");
+    }
+
+    @Test
+    @DisplayName("Deve conter diretrizes de comunidade, roleplay e concisão no system prompt")
+    void shouldIncludeCommunityAndScopeGuidelinesInSystemPrompt() {
+        ConversationRequest request = new ConversationRequest(
+                "corr-1",
+                TriggerType.SLASH,
+                new ConversationKey("guild-1", "chan-1", "user-1"),
+                "MyGuild",
+                "TestUser",
+                "Olá",
+                null,
+                List.of(),
+                new ReplyTarget.Channel("chan-1", "resp-1"),
+                Instant.now(),
+                false
+        );
+
+        LlmPrompt prompt = assembler.assemble(request, List.of(), List.of(), List.of());
+
+        assertThat(prompt.systemPrompt())
+                .contains("entrar nas piadas internas e no roleplay")
+                .contains("Prefira no máximo 3 parágrafos curtos")
+                .contains("Não construa projetos inteiros, sistemas completos")
+                .contains("Ferramentas (Uso Consciente):");
     }
 
     @Test
