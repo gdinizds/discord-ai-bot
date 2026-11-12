@@ -113,8 +113,8 @@ ai-bot:
     temperature: ${OPENROUTER_TEMPERATURE:1.0}
     max-output-tokens: 1536
     max-sequential-tool-invocations: 10
-    web-fetch-enabled: ${OPENROUTER_WEB_FETCH_ENABLED:true}
-    advisor-enabled: ${OPENROUTER_ADVISOR_ENABLED:true}
+    web-fetch-enabled: ${OPENROUTER_WEB_FETCH_ENABLED:false}
+    advisor-enabled: ${OPENROUTER_ADVISOR_ENABLED:false}
     advisor-model: ${OPENROUTER_ADVISOR_MODEL:openai/gpt-6.1-sol}
     image-generate-enabled: ${OPENROUTER_IMAGE_GENERATE_ENABLED:true}
     image-model: ${OPENROUTER_IMAGE_MODEL:bytedance-seed/seedream-5-0-flash}
