@@ -63,10 +63,10 @@ public class OpenRouterTtsAdapter implements TtsPort {
         var tts = properties.tts();
         String model = tts != null && tts.model() != null && !tts.model().isBlank()
                 ? tts.model()
-                : "fish-audio/s2.1-pro-free:free";
+                : "fish-audio/drama-3";
         String voice = tts != null && tts.voice() != null && !tts.voice().isBlank()
                 ? tts.voice()
-                : "24522123b5804bf691a8450d9187f03e";
+                : "5661bf8cb97740fcb10d2f756abf7779";
 
         Map<String, Object> payload = Map.of(
                 "model", model,

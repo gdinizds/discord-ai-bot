@@ -68,25 +68,24 @@ public class ContextAssembler {
             - NUNCA use marcadores de som, entonação ou emoção (como [chuckle], [laughing], (laughing), *risos*, [happy]) no texto normal.""";
 
     private static final String TTS_INSTRUCTIONS = """
-            Narração em Áudio (Text-to-Speech - Fish Audio S2.1):
-            - O usuário ativou o modo de voz (-falar ou comando com áudio)! A sua resposta será narrada por voz para o usuário usando o modelo Fish Audio S2.1.
+            Narração em Áudio (Text-to-Speech - Fish Audio Drama 3):
+            - O usuário ativou o modo de voz (-falar ou comando com áudio)! A sua resposta será narrada por voz usando o modelo Fish Audio Drama 3.
             - Otimização para Fala:
               * Gere um texto natural, coloquial e fluido, feito para ser escutado e compreendido com facilidade.
               * EVITE totalmente tabelas, listas longas e blocos densos de código, pois soam péssimos e confusos quando narrados.
               * Mantenha a resposta concisa (1 a 2 parágrafos curtos).
-            - O modelo suporta mais de 60 emoções e efeitos sonoros controlados por marcadores entre colchetes [tag]. Use-os para dar expressividade, sentimento e naturalidade humana à fala:
-              * Emoções básicas: [happy], [calm], [excited], [curious], [confident], [surprised], [satisfied], [grateful], [empathetic], [proud], [relaxed], [sad], [angry], [nervous], [scared], [worried], [sarcastic].
-              * Emoções avançadas: [hopeful], [optimistic], [determined], [confused], [doubtful], [disappointed], [nostalgic], [sympathetic], [compassionate], [anxious], [resigned].
-              * Modificadores de intensidade: [slightly sad], [very excited], [extremely angry], [warm and happy].
-              * Marcadores de tom: [whispering], [soft tone], [in a hurry tone], [shouting], e [emphasis] colocado imediatamente antes da palavra ou termo a enfatizar (ex: "Isso é [emphasis] muito importante.").
-              * Efeitos sonoros humanos: [laughing] (acompanhe de riso textual, ex: "[laughing] Ha ha ha!"), [chuckling] ("Heh, heh"), [sighing] ("sigh"), [gasping], [groaning], [yawning], [clear throat] ("ahem").
-              * Pausas de fala: [break] (pausa breve) e [long-break] (pausa estendida).
-              * Combinações: você pode combinar até 2 a 3 marcadores (ex: [excited][laughing], [mysterious][whispering], [sad][sighing]).
+            - Direção de Voz e Emoções do Drama 3:
+              * O Drama 3 é um modelo de atuação dramática que compreende direções de voz em linguagem natural entre colchetes [tag].
+              * Você pode atuar como um diretor de dublagem e usar descritores naturais, tanto no início quanto no meio das frases:
+                - Emoções diretas: [happy], [excited], [sad], [angry], [nervous], [curious], [confident], [sarcastic], [calm], [warm].
+                - Emoções descritivas em linguagem natural: [proud but exhausted], [bright, showing off], [suddenly thrilled], [panicked, speaking fast], [stopping short, alarmed], [relieved], [mysterious].
+                - Modos de entrega e ritmo: [whisper], [whispering], [soft tone], [speaking fast], [pause], [emphasis].
+                - Reações e sons humanos: [laughing] (acompanhado de risada textual "Haha" ou "Ha ha ha!"), [sighs], [gasp], [groan], [clear throat].
+                - Mudanças no meio da frase: você pode mudar a entonação no meio de uma fala (ex: "Tudo parecia tranquilo... [stopping short, alarmed] Espere, você ouviu isso?").
             - Regras de formatação obrigatórias:
-              1. Coloque o marcador de emoção principal no início de cada oração ou frase (ex: "[happy] Olá! [curious] O que você gostaria de explorar hoje?").
-              2. SEMPRE use colchetes [tag], NUNCA use parênteses (tag).
-              3. As tags de áudio serão automaticamente removidas do texto final exibido no chat do Discord, sendo usadas apenas para sintetizar o áudio narrado.
-              4. NUNCA ria ou escreva risadas com "kkk", "kkkkk", "rsrs" ou "ksks", pois o sintetizador de voz lê as letras literalmente ("k-k-k"). Para expressar riso falado, use SEMPRE a convenção fonética internacional ("Ha ha ha", "Haha", "Heh, heh", "Aha"), de preferência combinada com [laughing] ou [chuckling] (ex: "[laughing] Ha ha ha! Que engraçado!").""";
+              1. SEMPRE use colchetes [tag], NUNCA use parênteses (tag).
+              2. As tags de áudio [tag] serão automaticamente removidas do texto final exibido no chat do Discord, sendo usadas apenas para sintetizar o áudio narrado.
+              3. NUNCA ria ou escreva risadas com "kkk", "kkkkk", "rsrs" ou "ksks", pois o sintetizador de voz lê as letras literalmente ("k-k-k"). Para expressar riso falado, use SEMPRE a convenção fonética internacional ("Ha ha ha", "Haha", "Heh, heh", "Aha"), de preferência combinada com [laughing] ou [laughs].""";
 
     private final ConversationSettings settings;
     private final Clock clock;
@@ -210,7 +209,7 @@ public class ContextAssembler {
     }
 
     private static final Pattern S2_TAG_PATTERN = Pattern.compile(
-            "(?<=^|[\\s.,!?;:\"'()>\\]-])\\[([a-zA-Z\\s,_'-]{1,35})\\](?!\\()[ \\t]*");
+            "(?<=^|[\\s.,!?;:\"'()>\\]-])\\[([a-zA-ZáéíóúâêîôûãõçÁÉÍÓÚÂÊÎÔÛÃÕÇ\\s,_'-]{1,80})\\](?!\\()[ \\t]*");
     private static final Pattern S1_TAG_PATTERN = Pattern.compile(
             "\\((happy|sad|angry|excited|calm|nervous|confident|surprised|satisfied|delighted|" +
             "scared|worried|upset|frustrated|depressed|empathetic|embarrassed|disgusted|moved|" +

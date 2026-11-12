@@ -130,7 +130,7 @@ class ContextAssemblerTest {
                 .contains("Modo de Mensagem em Texto:")
                 .contains("NUNCA use marcadores de som, entonação ou emoção");
         assertThat(promptWithSpeak.systemPrompt())
-                .contains("Narração em Áudio (Text-to-Speech - Fish Audio S2.1):")
+                .contains("Narração em Áudio (Text-to-Speech - Fish Audio Drama 3):")
                 .contains("NUNCA ria ou escreva risadas com \"kkk\"")
                 .contains("O usuário ativou o modo de voz (-falar ou comando com áudio)!")
                 .doesNotContain("Modo de Mensagem em Texto:");
@@ -182,6 +182,16 @@ class ContextAssemblerTest {
 
         assertThat(ContextAssembler.stripTtsTags("[break] Um momento..."))
                 .isEqualTo("Um momento...");
+
+        // Drama 3 natural language and Portuguese tags
+        assertThat(ContextAssembler.stripTtsTags("[proud but exhausted] Conseguimos terminar tudo a tempo."))
+                .isEqualTo("Conseguimos terminar tudo a tempo.");
+
+        assertThat(ContextAssembler.stripTtsTags("Tudo parecia calmo... [stopping short, alarmed] Espere, você ouviu isso?"))
+                .isEqualTo("Tudo parecia calmo... Espere, você ouviu isso?");
+
+        assertThat(ContextAssembler.stripTtsTags("[entusiasmado, falando rápido] Olha só que incrível!"))
+                .isEqualTo("Olha só que incrível!");
 
         // Links Markdown NÃO devem ser removidos
         assertThat(ContextAssembler.stripTtsTags("[happy] Veja em [nosso site](https://example.com) agora."))

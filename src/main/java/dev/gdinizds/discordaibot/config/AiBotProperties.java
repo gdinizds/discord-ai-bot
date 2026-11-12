@@ -176,8 +176,8 @@ public record AiBotProperties(
 
     public record Tts(
             @DefaultValue("true") boolean enabled,
-            @DefaultValue("fish-audio/s2.1-pro-free:free") @NotBlank String model,
-            @DefaultValue("24522123b5804bf691a8450d9187f03e") @NotBlank String voice,
+            @DefaultValue("fish-audio/drama-3") @NotBlank String model,
+            @DefaultValue("5661bf8cb97740fcb10d2f756abf7779") @NotBlank String voice,
             @DefaultValue("25s") Duration timeout,
             @DefaultValue("1200") @Positive int maxChars) {}
 }

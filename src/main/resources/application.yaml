@@ -122,8 +122,8 @@ ai-bot:
     chat-timeout: 330s
   tts:
     enabled: true
-    model: ${OPENROUTER_TTS_MODEL:fish-audio/s2.1-pro-free:free}
-    voice: ${OPENROUTER_TTS_VOICE:24522123b5804bf691a8450d9187f03e}
+    model: ${OPENROUTER_TTS_MODEL:fish-audio/drama-3}
+    voice: ${OPENROUTER_TTS_VOICE:5661bf8cb97740fcb10d2f756abf7779}
     timeout: 25s
     max-chars: 1200
   tools:

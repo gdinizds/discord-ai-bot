@@ -60,7 +60,7 @@ class OpenRouterTtsAdapterTest {
                         "google/gemini-embedding-001", 768, 1.0, 1024, 5, true, true, "openai/gpt-6.1-sol", true,
                         "bytedance-seed/seedream-5-0-flash", Duration.ofSeconds(60), Duration.ofSeconds(10), Duration.ofSeconds(5)),
                 null, null, null, null, null, null, null, null,
-                new AiBotProperties.Tts(true, "fish-audio/s2.1-pro-free:free", "24522123b5804bf691a8450d9187f03e",
+                new AiBotProperties.Tts(true, "fish-audio/drama-3", "5661bf8cb97740fcb10d2f756abf7779",
                         Duration.ofSeconds(5), 1200));
 
         var adapter = new OpenRouterTtsAdapter(RestClient.builder(), JsonMapper.builder().build(), resilience, properties);
@@ -73,9 +73,9 @@ class OpenRouterTtsAdapterTest {
                 .withHeader("Authorization", equalTo("Bearer sk-or-test-key"))
                 .withHeader("HTTP-Referer", equalTo("https://github.com/gdinizds/discord-ai-bot"))
                 .withHeader("X-Title", equalTo("Discord AI Bot"))
-                .withRequestBody(matchingJsonPath("$.model", equalTo("fish-audio/s2.1-pro-free:free")))
+                .withRequestBody(matchingJsonPath("$.model", equalTo("fish-audio/drama-3")))
                 .withRequestBody(matchingJsonPath("$.input", equalTo("(happy) Bom dia!")))
-                .withRequestBody(matchingJsonPath("$.voice", equalTo("24522123b5804bf691a8450d9187f03e")))
+                .withRequestBody(matchingJsonPath("$.voice", equalTo("5661bf8cb97740fcb10d2f756abf7779")))
                 .withRequestBody(matchingJsonPath("$.response_format", equalTo("mp3"))));
     }
 

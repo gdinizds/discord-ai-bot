@@ -58,8 +58,8 @@ class ApplicationContextTest {
         assertThat(properties.images().maxBytes()).isEqualTo(8_388_608);
         assertThat(properties.images().keyPrefix()).isEqualTo("ai-bot");
         assertThat(properties.tts().enabled()).isTrue();
-        assertThat(properties.tts().model()).isEqualTo("fish-audio/s2.1-pro-free:free");
-        assertThat(properties.tts().voice()).isEqualTo("24522123b5804bf691a8450d9187f03e");
+        assertThat(properties.tts().model()).isEqualTo("fish-audio/drama-3");
+        assertThat(properties.tts().voice()).isEqualTo("5661bf8cb97740fcb10d2f756abf7779");
         assertThat(properties.tts().timeout()).isEqualTo(Duration.ofSeconds(25));
         assertThat(properties.tts().maxChars()).isEqualTo(1200);
     }
