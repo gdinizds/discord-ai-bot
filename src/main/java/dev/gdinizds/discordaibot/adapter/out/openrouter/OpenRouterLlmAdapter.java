@@ -5,6 +5,7 @@ import dev.gdinizds.discordaibot.domain.model.AiAnswer;
 import dev.gdinizds.discordaibot.domain.model.BinaryPart;
 import dev.gdinizds.discordaibot.domain.model.ChatTurn;
 import dev.gdinizds.discordaibot.domain.model.LlmPrompt;
+import dev.gdinizds.discordaibot.domain.model.OutboundImage;
 import dev.gdinizds.discordaibot.domain.model.TokenUsage;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.Content;
@@ -50,7 +51,8 @@ public class OpenRouterLlmAdapter implements LlmPort {
         Result<String> result = session.assistant().chat(currentContents(prompt));
 
         String content = result.content();
-        if (content == null || content.isBlank()) {
+        List<OutboundImage> images = session.images().get();
+        if ((content == null || content.isBlank()) && images.isEmpty()) {
             throw new EmptyResponseException("LLM returned empty or blank content (model=" + model + ")");
         }
 
@@ -58,8 +60,8 @@ public class OpenRouterLlmAdapter implements LlmPort {
                 .map(execution -> execution.request().name())
                 .distinct()
                 .toList();
-        return new AiAnswer(content, toolsUsed, usage(result), false,
-                session.images().get(), model);
+        return new AiAnswer(content == null ? "" : content, toolsUsed, usage(result), false,
+                images, model);
     }
 
     private static List<Content> currentContents(LlmPrompt prompt) {

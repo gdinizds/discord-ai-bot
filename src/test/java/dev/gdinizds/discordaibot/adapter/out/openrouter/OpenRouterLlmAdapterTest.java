@@ -118,6 +118,19 @@ class OpenRouterLlmAdapterTest {
     }
 
     @Test
+    void attachesImagesEvenWhenModelReturnsBlankContent() {
+        model.thenCallTool("image_search", "{\"query\":\"capivara\",\"count\":1}")
+                .thenAnswer("");
+
+        AiAnswer answer = adapter().answer(prompt("me mostra uma capivara", List.of()));
+
+        assertThat(answer.toolsUsed()).containsExactly("image_search");
+        assertThat(answer.text()).isEmpty();
+        assertThat(answer.images()).hasSize(1);
+        assertThat(answer.fallback()).isFalse();
+    }
+
+    @Test
     void answerWithoutImageToolHasNoImages() {
         model.thenAnswer("oi");
 

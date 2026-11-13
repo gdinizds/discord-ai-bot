@@ -141,7 +141,9 @@ public class ConversationService implements HandleConversationUseCase {
 
         List<String> chunks = answer.fallback()
                 ? List.of(settings.fallbackText())
-                : splitter.split(displayText);
+                : (displayText.isBlank() && !answer.images().isEmpty()
+                        ? List.of("")
+                        : splitter.split(displayText));
 
         waitForPlaceholder(placeholderAt);
         long publishStarted = System.nanoTime();

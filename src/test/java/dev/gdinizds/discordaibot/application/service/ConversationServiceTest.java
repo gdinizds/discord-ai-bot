@@ -242,6 +242,19 @@ class ConversationServiceTest {
     }
 
     @Test
+    void publishesImageWithEmptyChunkWhenAnswerTextIsBlank() {
+        var img = new OutboundImage("http://garage/img.jpg", "img.jpg", "imagem teste");
+        llm.set(prompt -> new AiAnswer("", List.of("image_generate"), TokenUsage.NONE, false, List.of(img), "model"));
+
+        service().handle(request(TriggerType.DOT, "gere imagem", null, CHANNEL));
+
+        assertThat(publisher.last().chunks()).containsExactly("");
+        assertThat(publisher.last().images()).containsExactly(img);
+        assertThat(history.turns).hasSize(2);
+        assertThat(history.turns.get(1).content()).contains("[imagem enviada: imagem teste]");
+    }
+
+    @Test
     void tokensSpentAfterTheTimeoutAreStillCharged() {
         timeout = Duration.ofMillis(200);
         var recorded = new FixedUsage(UsagePort.UserDay.ZERO, 0);
