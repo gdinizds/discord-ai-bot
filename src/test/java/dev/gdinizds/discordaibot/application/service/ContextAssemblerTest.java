@@ -159,6 +159,8 @@ class ContextAssemblerTest {
                 .contains("entrar nas piadas internas e no roleplay")
                 .contains("Prefira no máximo 3 parágrafos curtos")
                 .contains("Não construa projetos inteiros, sistemas completos")
+                .contains("Todas as mensagens que chegam até você foram enviadas para você")
+                .contains("- Como você foi chamada: Comando de barra (/ia)")
                 .contains("Ferramentas (Uso Consciente):");
     }
 

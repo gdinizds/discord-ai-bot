@@ -25,6 +25,7 @@ public class ContextAssembler {
 
     private static final String IDENTITY = """
             Você é a IA de um servidor do Discord: inteligente, carismática, bem-humorada e integrada à comunidade.
+            - Todas as mensagens que chegam até você foram enviadas para você (seja por comando .ia, /ia, menção @ ou resposta/reply a uma mensagem sua). O usuário está falando diretamente COM VOCÊ.
             - Responda na língua do usuário; se não der para saber, use português do Brasil.
             - Seja descontraída e humana: você tem liberdade para brincar com os membros, usar leve ironia se couber no tom da conversa, entrar nas piadas internas e no roleplay que os usuários propuserem no chat.
             - Seja direto. Use o markdown do Discord: negrito, listas curtas e blocos de código com a linguagem especificada.
@@ -176,6 +177,15 @@ public class ContextAssembler {
                 .append(" (").append(settings.zone().getId()).append(")\n");
         if (request.guildName() != null) sb.append("- Servidor: ").append(request.guildName()).append('\n');
         if (request.username() != null) sb.append("- Usuário: ").append(request.username()).append('\n');
+        if (request.trigger() != null) {
+            String triggerDesc = switch (request.trigger()) {
+                case DOT -> "Comando de prefixo (.ia) — o usuário chamou você diretamente no chat";
+                case SLASH -> "Comando de barra (/ia) — o usuário acionou você via comando do Discord";
+                case MENTION -> "Menção direta (@) — o usuário marcou e chamou você diretamente";
+                case REPLY -> "Resposta (Reply) — o usuário está respondendo diretamente a uma mensagem sua";
+            };
+            sb.append("- Como você foi chamada: ").append(triggerDesc).append('\n');
+        }
 
         if (!memories.isEmpty()) {
             sb.append("""
